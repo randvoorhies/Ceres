@@ -48,14 +48,14 @@ class DeviceProtocol(LineReceiver):
           except ValueError: raise ProtocolException(reason='Invalid data source id [' + key + ']', fatal=False)
 
           data = None
-          try: data = float(key)
+          try: data = float(val)
           except ValueError: raise Exception(reason='Invalid data value id [' + val + ']', fatal=False)
 
           # Ensure that we haven't recieved an update in the past second
           recententries = ceresdb.dataentries.find(
               {'hwid' : self.hwid,
                'dsid' : dsid, 
-               'time' : {"$gt" : self.now - datetime.timedelta(seconds=1)} }).count()
+               'time' : {"$gt" : self.now - datetime.timedelta(seconds=.1)} }).count()
           if recententries > 0:
             raise ProtocolException(reason='Data too new for dsid [' + str(dsid) + ']', fatal=False)
 
