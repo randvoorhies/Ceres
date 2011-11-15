@@ -6,8 +6,7 @@
 
     $('a#calculate').bind('click', function() {
       $.getJSON($SCRIPT_ROOT + '/_getdata', {
-        hdid: {{ hdid }},
-        chan: 0}
+        hwid: {{ hwid }}}
       , function(data) {
         $("#result").text(data.result);
       });
@@ -17,7 +16,7 @@
   });
 
 </script>
-<h1>jQuery Example</h1>
+<h1>Heres your data</h1>
 <p><span id=result>?</span>
 <p><a href=# id=calculate>send to server</a>
 {% endblock %}
