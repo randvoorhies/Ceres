@@ -1,0 +1,23 @@
+{% extends "layout.html" %}
+{% block body %}
+<script type=text/javascript>
+
+  $(function() {
+
+    $('a#calculate').bind('click', function() {
+      $.getJSON($SCRIPT_ROOT + '/_getdata', {
+        hdid: {{ hdid }},
+        chan: 0}
+      , function(data) {
+        $("#result").text(data.result);
+      });
+      return false;
+    });
+
+  });
+
+</script>
+<h1>jQuery Example</h1>
+<p><span id=result>?</span>
+<p><a href=# id=calculate>send to server</a>
+{% endblock %}
