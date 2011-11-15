@@ -18,18 +18,15 @@ def getdata():
 @app.route('/')
 @app.route('/<hwid>')
 def index(hwid=None):
-  if hwid == None:
-    return 'Give me a device id!'
-  else:
-    deviceinfo = ceresdb.devices.find_one({'hwid' : hwid})
-    if deviceinfo == None:
-      alldevices = "<h1>All Devices:</h1>"
-      for device in ceresdb.devices.find():
-        alldevices += 'Device: ' + device['hwid'] + '<br>'
-      return alldevices
+  deviceinfo = ceresdb.devices.find_one({'hwid' : hwid})
+  if deviceinfo == None:
+    alldevices = "<h1>All Devices:</h1>"
+    for device in ceresdb.devices.find():
+      alldevices += 'Device: ' + device['hwid'] + '<br>'
+    return alldevices
 
-    else:
-      return render_template('index.html', hwid=hwid)
+  else:
+    return render_template('index.html', hwid=hwid)
 
 ceresdb = None
 if __name__ == '__main__':
