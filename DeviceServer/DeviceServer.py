@@ -22,6 +22,7 @@ class DeviceProtocol(LineReceiver):
     global ceresdb
 
     self.lines += 1
+    log.msg('Line Recieved: ', data)
 
     try:
       datasplit = data.split(':')
@@ -80,6 +81,7 @@ class DeviceProtocol(LineReceiver):
       if e.fatal:
         self.transport.loseConnection()
 
+
 log.startLogging(open('/var/log/ceres.log', 'w'))
 
 dbconnection = pymongo.Connection()
@@ -87,6 +89,7 @@ ceresdb = dbconnection.ceres
 
 factory = Factory()
 factory.protocol = DeviceProtocol
-reactor.listenTCP(10000, factory, interface='192.168.1.1')
+#reactor.listenTCP(10000, factory, interface='192.168.1.1')
+reactor.listenTCP(10000, factory)
 reactor.run()
 
