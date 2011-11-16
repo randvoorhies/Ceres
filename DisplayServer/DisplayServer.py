@@ -2,6 +2,7 @@
 
 from flask import Flask, jsonify, render_template, request, json
 import pymongo
+import datetime, time
 
 ceresdb = None
 app = Flask(__name__)
@@ -14,7 +15,7 @@ def getdata():
 
   result = []
   for entry in ceresdb.dataentries.find({'hwid' : hwid}).sort('time',1):
-    result.append((str(entry['time']), str(entry['data'])))
+    result.append((time.mktime(entry['time'].timetuple()), entry['data']))
   return jsonify(data=result)
 
 @app.route('/')
