@@ -1,21 +1,57 @@
 {% extends "layout.html" %}
 {% block body %}
 <script type=text/javascript>
+  $(function () {
 
-  $(function() {
+      updatePlot();
 
-    $('a#calculate').bind('click', function() {
-      $.getJSON($SCRIPT_ROOT + '/_getdata', {
+      //var d1 = [];
+      //for (var i = 0; i < 14; i += 0.5)
+      //d1.push([i, Math.sin(i)]);
+
+      //var d2 = [[0, 3], [4, 8], [8, 5], [9, 13]];
+
+      //// a null signifies separate line segments
+      //var d3 = [[0, 12], [7, 12],  [7, 2.5], [12, 2.5]];
+
+      //$.plot($("#plot"), [ d1, d2, d3 ]);
+   });
+
+function updatePlot() {
+  $.getJSON($SCRIPT_ROOT + '/_getdata', {
         hwid: {{ hwid }}}
-      , function(data) {
-        $("#result").text(data.result);
+        , function(result) {
+
+        var len = result.data.length;
+        $("#test").append('Data...' + len + '<br>');
+        for(var i=0; i<len; i++)
+        {
+          $("#test").append('> ' + result.data[i][0] + ' ' + result.data[i][1] + '<br/>');
+        }
+
+
       });
-      return false;
-    });
-  });
+
+
+
+  //setTimeout("updatePlot()", 300);
+}
+
+
+
+
+  //$(function() {
+
+  //  $('a#calculate').bind('click', function() {
+  //      //    return false;
+  //  });
+  //});
 
 </script>
-<h1>Heres your awesome data</h1>
+
 <p><span id=result>?</span>
-<p><a href=# id=calculate>Get data from server...</a>
+
+<div id="test"> </div>
+<div id="plot" style="width:600px;height:300px;"></div>
+
 {% endblock %}
