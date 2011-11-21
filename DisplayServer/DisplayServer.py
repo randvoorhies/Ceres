@@ -11,7 +11,6 @@ app = Flask(__name__)
 def getdata():
   global ceresdb
   hwid = request.args.get('hwid')
-  print 'Getting data'
 
   result = []
   for entry in ceresdb.dataentries.find({'hwid' : hwid}).sort('time',1):

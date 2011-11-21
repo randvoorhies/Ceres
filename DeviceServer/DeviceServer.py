@@ -16,13 +16,12 @@ class DeviceProtocol(LineReceiver):
   def connectionMade(self):
     self.now = datetime.datetime.utcnow()
     self.lines = 0
-    log.msg('New Connection: ' + str(self.transport.getHost()))
+    #log.msg('New Connection: ' + str(self.transport.getHost()))
 
   def lineReceived(self, data):
     global ceresdb
 
     self.lines += 1
-    log.msg('Line Recieved: ', data)
 
     try:
       datasplit = data.split(':')
@@ -31,8 +30,9 @@ class DeviceProtocol(LineReceiver):
         val = datasplit[1].strip()
 
         if self.lines == 1:
-          # The first line must contain 'hwid : ????????' to identify the device. 
-          # Make sure this line is properly formatted, extract the hwid, and look it up in the database
+          # The first line must contain 'hwid : ????????' to identify the
+          # device.  Make sure this line is properly formatted, extract the
+          # hwid, and look it up in the database
 
           if key == 'hwid':
             deviceinfo = ceresdb.devices.find_one({'hwid' : val})
@@ -40,9 +40,11 @@ class DeviceProtocol(LineReceiver):
               raise ProtocolException(reason='Unknown hwid [' + val + ']', fatal=True)
             else:
               self.hwid = val
-              log.msg('Got connection from host [' + str(self.transport.getHost()) + '] hwid [' + val + ']')
+              #log.msg('Got connection from host [' + str(self.transport.getHost()) + '] hwid [' + val + ']')
+
         else:
-          # All subsequent lines must be of the form 'N : D', where N is a data source id, and D is a data value.
+          # All subsequent lines must be of the form 'N : D', where N is a data
+          # source id, and D is a data value.
 
           dsid = None
           try: dsid = int(key)
