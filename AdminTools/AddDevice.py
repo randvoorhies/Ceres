@@ -2,6 +2,8 @@
 import pymongo
 import rrdtool
 import os
+import time
+import datetime
 
 ceresdb = pymongo.Connection().ceres
 
@@ -26,8 +28,10 @@ if not os.path.exists(rrdpath):
 rrdfilename = os.path.join(rrdpath, hwid + '.rrd')
 print 'Creating file: ' + rrdfilename
 
+now = str(int(time.mktime(datetime.datetime.utcnow().timetuple())))
+
 ret = rrdtool.create(
-    str(rrdfilename), '--step', '60', '--start', 'N',
+    str(rrdfilename), '--step', '60', '--start', now, 
     'DS:temperature:GAUGE:120:U:U',
     'DS:humidity:GAUGE:120:U:U',
     'DS:light:GAUGE:120:U:U',
@@ -42,10 +46,14 @@ ret = rrdtool.create(
     'RRA:MAX:0.5:60:8766'        # MAX: 1-hour resolution for a year
     )
 
+if ret:
+  print 'Could not create RRD database file!'
+  print rrdtool.error()
+  exit(-1)
+
 ceresdb.devices.save({
   'username' : user['username'],
   'hwid'     : hwid,
+  'model'    : '0',
   'file'     : rrdfilename})
-
-
 

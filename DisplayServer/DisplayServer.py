@@ -1,12 +1,16 @@
 # -*- coding: utf-8 -*-
-
-from flask import Flask, jsonify, render_template, request, json
+from flask import Flask, jsonify, render_template, request, json, session, flash, redirect, url_for
 import pymongo
 import datetime, time
+import bcrypt
 
 ceresdb = None
 app = Flask(__name__)
+app.secret_key = '\xba\xd0\x15\xaeH\xb6\x81M6\x15tb\xf1p4z_\x80\xd8\xf2\xf9\x05\xd1\x03'
 
+######################################################################
+# Get Data Responder
+######################################################################
 @app.route('/_getdata')
 def getdata():
   global ceresdb
@@ -17,26 +21,58 @@ def getdata():
     result.append((time.mktime(entry['time'].timetuple()), entry['data']))
   return jsonify(data=result)
 
-@app.route('/')
-@app.route('/mydevice/<hwid>')
-def index(hwid=None):
-  global ceresdb
-  deviceinfo = ceresdb.devices.find_one({'hwid' : hwid})
-  if deviceinfo == None:
-    # If no valid HWID was given in the URL, just display them all
-    alldevices = ''
+######################################################################
+# Login Page
+######################################################################
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+  error = None
+  if request.method == 'POST':
+    username = request.form['username']
+    password = request.form['password']
 
-    if hwid != None:
-      alldevices += "<h1>Bad Device!</h1>"
+    userinfo = ceresdb.users.find_one({'username' : username})
 
-    alldevices += "<h2>All Devices:</h2>"
-    for device in ceresdb.devices.find():
-      alldevices += 'Device: ' + device['hwid'] + '<br>'
-    return alldevices
+    if userinfo == None:
+      return render_template('login.html', error='Unknown Username')
 
+    hashedpassword = bcrypt.hashpw(password, userinfo['hashedpassword'])
+    if hashedpassword == userinfo['hashedpassword']:
+      flash('Login Successful')
+      session['username'] = username
+      return redirect(url_for('index'))
+    else:
+      return render_template('login.html', error='Invalid Password')
   else:
-    # If a valid HWID was given, then render the data display template
-    return render_template('index.html', hwid=hwid)
+    return render_template('login.html', error=None)
+
+######################################################################
+# Logout Page
+######################################################################
+@app.route('/logout')
+def logout():
+  session.pop('username', None)
+  return redirect(url_for('index'))
+
+######################################################################
+# Homepage
+######################################################################
+@app.route('/')
+def index(hwid=None):
+  return render_template('index.html')
+
+@app.route('/mydevice/<hwid>')
+def mydevice_hwid(hwid=None):
+  if not 'username' in session:
+    return render_template('login.html', 'You must login before accessing hardware pages')
+
+  username = session['username']
+
+  deviceinfo = ceresdb.devices.find_one({'hwid' : hwid})
+  if deviceinfo['username'] != username:
+    return 'You do not own this device!'
+
+  return render_template('hardwareview.html', hwid=hwid)
 
 if __name__ == '__main__':
 

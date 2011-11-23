@@ -14,11 +14,13 @@ while True:
   s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
   s.connect((TCP_IP, TCP_PORT))
 
-  s.send('hwid : 1234567890\r\n')
-  s.send("0 : {0}\r\n".format(i))
+  s.send('hwid : 1234\r\n')
+  s.send("temperature : {0}\r\n".format(i))
+  s.send("humidity : {0}\r\n".format(i))
+  s.send("light : {0}\r\n".format(i))
 
   s.close()
 
   print i
-  time.sleep(0.5)
+  time.sleep(1.5)
 

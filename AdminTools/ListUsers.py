@@ -4,7 +4,9 @@ import pymongo
 ceresdb = pymongo.Connection().ceres
 
 for user in ceresdb.users.find().sort('username'):
-  print 'User: ' + user['username']
+  print '|-User: ' + user['username']
   for device in ceresdb.devices.find({'username' : user['username']}):
-    print '  Device: ' + device['hwid']
+    print '|--Device: ' + device['hwid']
+    print '|---Model: ' + device['model']
+    print '|---RRD file: ' + device['file']
 

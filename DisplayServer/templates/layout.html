@@ -1,9 +1,21 @@
 <!doctype html>
-<title>jQuery Example</title>
+<title>Ceres</title>
+{% with messages = get_flashed_messages() %}
+  {% if messages %}
+    <ul class=flashes>
+     {% for message in messages %}
+       <li>{{ message }}</li>
+     {% endfor %}
+    </ul>
+  {% endif %}
+{% endwith %}
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" type="text/css" />
 <script type=text/javascript src="{{ url_for('static', filename='jquery.js') }}"></script>
 <script type=text/javascript src="{{ url_for('static', filename='jquery.flot.js') }}"></script>
 <script type=text/javascript>
   var $SCRIPT_ROOT = {{ request.script_root|tojson|safe }};
 </script>
-{% block body %}{% endblock %}
+<div class="body">
+  {% block body %}{% endblock %}
+</div>
 
