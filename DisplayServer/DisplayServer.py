@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
-from flask import Flask, jsonify, render_template, request, json, session, flash, redirect, url_for
+from functools import wraps
+from flask import Flask, jsonify, render_template, request, json, session, flash, redirect, url_for, g
 import pymongo
 import datetime, time
 import bcrypt
@@ -7,6 +8,14 @@ import bcrypt
 ceresdb = None
 app = Flask(__name__)
 app.secret_key = '\xba\xd0\x15\xaeH\xb6\x81M6\x15tb\xf1p4z_\x80\xd8\xf2\xf9\x05\xd1\x03'
+
+def login_required(f):
+  @wraps(f)
+  def decorated_function(*args, **kwargs):
+    if not 'username' in session:
+      return redirect(url_for('login'))
+    return f(*args, **kwargs)
+  return decorated_function
 
 ######################################################################
 # Get Data Responder
@@ -34,17 +43,22 @@ def login():
     userinfo = ceresdb.users.find_one({'username' : username})
 
     if userinfo == None:
-      return render_template('login.html', error='Unknown Username')
+      return render_template('login.html', error='Invalid Username/Password')
 
     hashedpassword = bcrypt.hashpw(password, userinfo['hashedpassword'])
     if hashedpassword == userinfo['hashedpassword']:
-      flash('Login Successful')
       session['username'] = username
-      return redirect(url_for('index'))
+
+      return redirect(url_for('myceres'))
+
     else:
-      return render_template('login.html', error='Invalid Password')
+      return render_template('login.html', error='Invalid Username/Password')
   else:
-    return render_template('login.html', error=None)
+    if 'username' in session:
+      flash('You are already logged in!')
+      return redirect(url_for('myceres'))
+    else:
+      return render_template('login.html', error=None)
 
 ######################################################################
 # Logout Page
@@ -59,19 +73,36 @@ def logout():
 ######################################################################
 @app.route('/')
 def index(hwid=None):
-  return render_template('index.html')
+  username = None
+  if 'username' in session:
+    username = session['username']
+  return render_template('index.html', username=username)
 
-@app.route('/mydevice/<hwid>')
-def mydevice_hwid(hwid=None):
-  if not 'username' in session:
-    return render_template('login.html', 'You must login before accessing hardware pages')
-
+######################################################################
+# User Page
+######################################################################
+@app.route('/myceres')
+@login_required
+def myceres(username=None):
   username = session['username']
+  devices = []
+  for device in ceresdb.devices.find({'username' : username}):
+    devices.append(str(device['hwid']))
+  print devices
+  return render_template('myceres.html', username=username, devices=devices)
 
+
+######################################################################
+# Device Page
+######################################################################
+@app.route('/myceres/<hwid>')
+@login_required
+def devices(hwid=None):
+  username = session['username']
   deviceinfo = ceresdb.devices.find_one({'hwid' : hwid})
-  if deviceinfo['username'] != username:
-    return 'You do not own this device!'
-
+  if deviceinfo == None or deviceinfo['username'] != username:
+    flash('You do not own the requested device')
+    return redirect(url_for('myceres'))
   return render_template('hardwareview.html', hwid=hwid)
 
 if __name__ == '__main__':

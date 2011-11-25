@@ -1,0 +1,15 @@
+<!doctype html>
+{% extends "layout.html" %}
+{% block body %}
+<h1>Hello, {{ username }}</h1>
+<a href="{{ url_for('logout') }}">logout</a>
+
+<h3>Your Devices</h3>
+<ul>
+  {% for device in devices %}
+  <li><a href="{{ url_for('devices', hwid=device) }}">{{ device }}</a></li>
+  {% endfor %}
+</ul>
+
+{% endblock %}
+
