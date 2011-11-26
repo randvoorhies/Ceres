@@ -2,6 +2,7 @@
 
 import socket
 import time
+import random
 
 TCP_IP = '127.0.0.1'
 TCP_PORT = 10000
@@ -14,13 +15,21 @@ while True:
   s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
   s.connect((TCP_IP, TCP_PORT))
 
+  temperature = 100-i+random.randint(-10, 10)
+  humidity = (50+i)%100+random.randint(-5, 5)
+  light = i + random.randint(-20, 20)
+
+  print "temperature : {0}\r\n".format(temperature)
+  print "humidity : {0}\r\n".format(humidity)
+  print "light : {0}\r\n".format(light)
+
   s.send('hwid : fastdevice\r\n')
-  s.send("temperature : {0}\r\n".format(i))
-  s.send("humidity : {0}\r\n".format(i))
-  s.send("light : {0}\r\n".format(i))
+  s.send("temperature : {0}\r\n".format(temperature))
+  s.send("humidity : {0}\r\n".format(humidity))
+  s.send("light : {0}\r\n".format(light))
 
   s.close()
 
   print i
-  time.sleep(1.1)
+  time.sleep(1.5)
 

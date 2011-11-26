@@ -27,37 +27,51 @@ def getdata():
   global ceresdb
 
   hwid           = request.args.get('hwid')
-  starttimestamp = request.args.get('starttimestamp')
-  endtimestamp   = request.args.get('endtimestamp')
+  #starttimestamp = request.args.get('starttimestamp')
+  #endtimestamp   = request.args.get('endtimestamp')
 
   device = ceresdb.devices.find_one({'hwid' : hwid})
+  print 'Getting data'
   if device['username'] != session['username']:
+    print 'Wrong username [' + session['username'] + '] for device [' + hwid + ']'
     return ''
 
   try:
-    res = rrdtool.fetch(device['file'],
-        'AVERAGE',
-        '--start='+starttimestamp,
-        '--end='+endtimestamp)
+    now = int(time.mktime(datetime.datetime.utcnow().timetuple()))
+    print 'Fetching...' + device['file']
+    res = rrdtool.fetch(str(device['file']), 'AVERAGE',
+        '--start='+str(now-60),
+        '--end='+str(now))
+        #'--start='+starttimestamp,
+        #'--end='+endtimestamp)
+        
+    #print 'RES: ' + str(res)
 
     timestamps = res[0]
     names      = res[1]
 
     result = {}
+    datastreamnames = []
+    datastreams = []
     for name in names:
-      result[name] = []
+      datastreamnames.append(name)
+      datastreams.append([])
 
     for datapointidx, datapoint in enumerate(res[2]):
       if len(datapoint) != len(names):
         continue
     
-      timestamp = timestamps[0] + datapointidx*timestamps[2]
+      timestamp = (timestamps[0] + datapointidx*timestamps[2]) * 1000
       for validx, val in enumerate(datapoint):
-        result[names[validx]].append(timestamp, val)
+        datastreams[validx].append((timestamp, val))
+
+    result['datastreams']     = datastreams
+    result['datastreamnames'] = datastreamnames
 
     return jsonify(data=result)
-  except:
-    return ''
+  except rrdtool.error as e:
+    print ' Oh crap...' + e.str()
+  return ''
 
 
 ######################################################################

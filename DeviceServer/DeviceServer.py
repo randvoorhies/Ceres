@@ -35,13 +35,15 @@ class DeviceProtocol(LineReceiver):
       templatestr += dsid + ':'
     templatestr = templatestr[0:-1]
 
-    datastr = str(time.mktime(self.now.timetuple()))
+    nowstr = str(int(time.mktime(self.now.timetuple())))
+    datastr = nowstr
     for value in self.data.values():
       datastr += ':' + value
     
     rrdlock.acquire()
     try:
       ret = rrdtool.update(str(self.rrdfile), templatestr, datastr)
+      print 'Wrote data at time ' + nowstr + ' to ' + self.rrdfile
     except rrdtool.error as e:
       log.msg('Error writing to rrdfile for hwid [' + self.hwid +']: ' + str(e))
     finally:

@@ -8,16 +8,24 @@
     $.getJSON($SCRIPT_ROOT + '/_getdata', {
           "hwid": "{{ hwid }}"}
           , function(result) {
+
+          var plots = []
+          var datastreams = result.data.datastreams
+          $.plot($("#plot"), datastreams, {xaxis: { mode: "time"}} );
+
+          
+
+
   
-          var len = result.data.length;
-          var dataarray = [];
-          for(var i=0; i<len; i++)
-          {
-            dataarray[i] = [];
-            dataarray[i][0] = result.data[i][0]*1000;
-            dataarray[i][1] = result.data[i][1];
-          }
-          $.plot($("#plot"), [{data: dataarray}], { xaxis: { mode: "time" } });
+          //var len = result.data.length;
+          //var dataarray = [];
+          //for(var i=0; i<len; i++)
+          //{
+          //  dataarray[i] = [];
+          //  dataarray[i][0] = result.data[i][0]*1000;
+          //  dataarray[i][1] = result.data[i][1];
+          //}
+          //$.plot($("#plot"), [{data: dataarray}], { xaxis: { mode: "time" } });
   
         });
   
