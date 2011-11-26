@@ -32,7 +32,20 @@
         for(name in datastreams)
         {
           var datastream = datastreams[name];
-          $.plot($("#"+name), [datastream], {xaxis: {mode: "time"}});
+          $.plot($("#"+name), [
+              {
+                data: datastream,
+                lines: {show: true, fill: true},
+                shadowSize: 0
+                }], {xaxis: {mode: "time"}});
+              
+              
+              
+              
+              //datastream], 
+              //{xaxis: {mode: "time"},
+              // lines: {show: true, fill: true}
+              //});
         }
   
         });
