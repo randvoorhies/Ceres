@@ -4,6 +4,7 @@ from flask import Flask, jsonify, render_template, request, json, session, flash
 import pymongo
 import datetime, time
 import bcrypt
+import rrdtool
 
 ceresdb = None
 app = Flask(__name__)
@@ -21,14 +22,43 @@ def login_required(f):
 # Get Data Responder
 ######################################################################
 @app.route('/_getdata')
+@login_required
 def getdata():
   global ceresdb
-  hwid = request.args.get('hwid')
 
-  result = []
-  for entry in ceresdb.dataentries.find({'hwid' : hwid}).sort('time',1):
-    result.append((time.mktime(entry['time'].timetuple()), entry['data']))
-  return jsonify(data=result)
+  hwid           = request.args.get('hwid')
+  starttimestamp = request.args.get('starttimestamp')
+  endtimestamp   = request.args.get('endtimestamp')
+
+  device = ceresdb.devices.find_one({'hwid' : hwid})
+  if device['username'] != session['username']:
+    return ''
+
+  try:
+    res = rrdtool.fetch(device['file'],
+        'AVERAGE',
+        '--start='+starttimestamp,
+        '--end='+endtimestamp)
+
+    timestamps = res[0]
+    names      = res[1]
+
+    result = {}
+    for name in names:
+      result[name] = []
+
+    for datapointidx, datapoint in enumerate(res[2]):
+      if len(datapoint) != len(names):
+        continue
+    
+      timestamp = timestamps[0] + datapointidx*timestamps[2]
+      for validx, val in enumerate(datapoint):
+        result[names[validx]].append(timestamp, val)
+
+    return jsonify(data=result)
+  except:
+    return ''
+
 
 ######################################################################
 # Login Page

@@ -11,17 +11,21 @@ import datetime
 import threading
 import time
 
+######################################################################
 class ProtocolException(Exception):
   def __init__(self, reason, fatal):
     self.reason = reason
     self.fatal = fatal
 
+######################################################################
 class DeviceProtocol(LineReceiver):
   def connectionMade(self):
     self.now = datetime.datetime.utcnow()
     self.lines = 0
     self.data = {}
+    self.hwid = ''
 
+  ######################################################################
   def connectionLost(self, reason):
     if len(self.data) == 0:
       return
@@ -31,7 +35,7 @@ class DeviceProtocol(LineReceiver):
       templatestr += dsid + ':'
     templatestr = templatestr[0:-1]
 
-    datastr =  str(time.mktime(self.now.timetuple()))
+    datastr = str(time.mktime(self.now.timetuple()))
     for value in self.data.values():
       datastr += ':' + value
     
@@ -39,10 +43,11 @@ class DeviceProtocol(LineReceiver):
     try:
       ret = rrdtool.update(str(self.rrdfile), templatestr, datastr)
     except rrdtool.error as e:
-      raise ProtocolException(reason='RRD error: ' + str(e), fatal=False)
+      log.msg('Error writing to rrdfile for hwid [' + self.hwid +']: ' + str(e))
     finally:
       rrdlock.release()
 
+  ######################################################################
   def lineReceived(self, data):
     global ceresdb
 
@@ -66,7 +71,6 @@ class DeviceProtocol(LineReceiver):
             else:
               self.hwid = val
               self.rrdfile = deviceinfo['file']
-              #log.msg('Got connection from host [' + str(self.transport.getHost()) + '] hwid [' + val + ']')
 
         else:
           # All subsequent lines must be of the form 'S : D', where S is the
@@ -88,6 +92,7 @@ class DeviceProtocol(LineReceiver):
         self.transport.loseConnection()
 
 
+######################################################################
 log.startLogging(open('/var/log/ceres.log', 'w'))
 
 dbconnection = pymongo.Connection()

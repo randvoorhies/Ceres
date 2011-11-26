@@ -1,11 +1,12 @@
 {% extends "layout.html" %}
 {% block body %}
+<script type=text/javascript src="{{ url_for('static', filename='jquery.flot.js') }}"></script>
 <script type=text/javascript>
   $(function () { updatePlot(); });
 
   function updatePlot() {
     $.getJSON($SCRIPT_ROOT + '/_getdata', {
-          hwid: {{ hwid }}}
+          "hwid": "{{ hwid }}"}
           , function(result) {
   
           var len = result.data.length;
@@ -20,13 +21,14 @@
   
         });
   
-    setTimeout("updatePlot()", 400);
+    // Update once per second
+    setTimeout("updatePlot()", 1000);
   }
 
 
 </script>
 
-<div id="test"> </div>
+<h1>Device : {{ hwid }} </h1>
 <div id="plot" style="width:600px;height:300px;"></div>
 
 {% endblock %}
