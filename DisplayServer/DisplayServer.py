@@ -49,24 +49,40 @@ def getdata():
 
     timestamps = res[0]
     names      = res[1]
+    data       = res[2]
 
     result = {}
-    datastreamnames = []
-    datastreams = []
-    for name in names:
-      datastreamnames.append(name)
-      datastreams.append([])
+    result['datastreams'] = {}
+    resdata = []
 
-    for datapointidx, datapoint in enumerate(res[2]):
-      if len(datapoint) != len(names):
-        continue
-    
-      timestamp = (timestamps[0] + datapointidx*timestamps[2]) * 1000
-      for validx, val in enumerate(datapoint):
-        datastreams[validx].append((timestamp, val))
+    for n in names:
+      resdata.append([])
 
-    result['datastreams']     = datastreams
-    result['datastreamnames'] = datastreamnames
+    for t,d in enumerate(data):
+      timestamp = (timestamps[0] + t*timestamps[2]) * 1000
+      for i, p in enumerate(d):
+        resdata[i].append((timestamp,p))
+
+    for i,d in enumerate(resdata):
+      result['datastreams'][names[i]] = d
+
+    #result = {}
+    #datastreamnames = []
+    #datastreams = []
+    #for name in names:
+    #  datastreamnames.append(name)
+    #  datastreams.append([])
+
+    #for datapointidx, datapoint in enumerate(res[2]):
+    #  if len(datapoint) != len(names):
+    #    continue
+    #
+    #  timestamp = (timestamps[0] + datapointidx*timestamps[2]) * 1000
+    #  for validx, val in enumerate(datapoint):
+    #    datastreams[validx].append((timestamp, val))
+
+    #result['datastreams']     = datastreams
+    #result['datastreamnames'] = datastreamnames
 
     return jsonify(data=result)
   except rrdtool.error as e:
