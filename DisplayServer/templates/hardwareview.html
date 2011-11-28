@@ -14,17 +14,32 @@
         // Create the plot divs
         if(initialized == 0)
         {
-          var plotdivs = '';
+          var plotrows = '';
+          plotrows += '<table>';
           for(name in datastreams)
           {
-            plotdivs += "<hr/>";
-            plotdivs += "<p style=\"font-size:20pt;\">";
-            if(name == "temperature" || name == "humidity" || name == "light")
-              plotdivs += "<img src=\"/static/"+name+"_icon.svg\"/ style=\"height:20px;\"\>";
-            plotdivs += " " + name+"</p>";
-            plotdivs += "<div id=\""+name+"\" style=\"width:600px;height:150px;\"></div>";
+            plotrows += '<tr>';
+            plotrows += ' <td>';
+              if(name == "temperature" || name == "humidity" || name == "light")
+                plotrows += "<img src=\"/static/"+name+"_icon.svg\"/ style=\"height:30px;\"\>";
+                plotrows += " <h4>" + name+"</h4>";
+            plotrows += ' </td>';
+            plotrows += ' <td>';
+            plotrows += '  <div id="plot_'+name+'" style="width:600px;height:150px;"></div>';
+            plotrows += ' </td>';
+            plotrows += '</tr>';
+
+
+
+            //plotdivs += "<hr/>";
+            //plotdivs += "<p style=\"font-size:20pt;\">";
+            //if(name == "temperature" || name == "humidity" || name == "light")
+            //  plotdivs += "<img src=\"/static/"+name+"_icon.svg\"/ style=\"height:20px;\"\>";
+            //plotdivs += " " + name+"</p>";
+            //plotdivs += "<div id=\""+name+"\" style=\"width:600px;height:150px;\"></div>";
           }
-          $("#plots").html(plotdivs)
+          plotrows += '</tables>';
+          $("#plots").html(plotrows)
         }
         initialized = 1;
 
@@ -32,7 +47,7 @@
         for(name in datastreams)
         {
           var datastream = datastreams[name];
-          $.plot($("#"+name), [
+          $.plot($("#plot_"+name), [
               {
                 data: datastream,
                 lines: {show: true, fill: true},
@@ -50,8 +65,10 @@
 
 </script>
 
-<div style="font-size:30pt;">Device : {{ hwid }}</div>  
-<a href="{{ url_for('myceres') }}">&lt;&lt; back</a>
+<div class="page-header"><h1>Device : {{ hwid }}</h1>
+  <a href="{{ url_for('myceres') }}">&lt;&lt; back</a>
+</div>  
+
 <div id="plots"></div>
 
 {% endblock %}
