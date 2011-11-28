@@ -1,15 +1,61 @@
 <!doctype html>
 {% extends "layout.html" %}
 {% block body %}
+
+<script type=text/javascript>
+
+  $(document).ready(function(){
+      updateStatus();
+      });
+
+  function updateStatus()
+  {
+    var statusRequest = "";
+    {% for device in devices %}
+      statusRequest += "{{ device }},"; 
+    {% endfor %}
+
+    $.getJSON($SCRIPT_ROOT + '/_getstatus', {"hwids":statusRequest}, function(result) {
+        var statii = result.data;
+        var hwid = "";
+        {% for device in devices %}
+        hwid = "{{ device }}";
+        if(statii[hwid]['ok'])
+        {
+        $("#{{ device }}_status").html('<span class="label success">OK</span>');
+        }
+        else
+        {
+          
+        $("#{{ device }}_status").html('<span class="label important">NOT OK</span>');
+        }
+        {% endfor %}
+        });
+
+    setTimeout("updateStatus()", 1000);
+  };
+  
+</script>
+
 <h1>Hello, {{ username }}</h1>
-<a href="{{ url_for('logout') }}">logout</a>
 
 <h3>Your Devices</h3>
-<ul>
-  {% for device in devices %}
-  <li><a href="{{ url_for('devices', hwid=device) }}">{{ device }}</a></li>
-  {% endfor %}
-</ul>
+<table class="zebra-striped">
+  <thead>
+  </thead>
+  <tr>
+    <th>Device</th>
+    <th>Status</th>
+  </tr>
+  <tbody>
+    {% for device in devices %}
+    <tr>
+      <td> <a href="{{ url_for('devices', hwid=device) }}">{{ device }}</a> </td>
+      <td><span id="{{ device }}_status">...</span></td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
 
 {% endblock %}
 

@@ -19,22 +19,58 @@ def login_required(f):
   return decorated_function
 
 ######################################################################
+# Get Status Responder
+######################################################################
+@app.route('/_getstatus')
+@login_required
+def getstatus():
+  hwids = request.args.get('hwids').split(',')
+  hwids = map(lambda x: str(x), hwids)
+
+  now = int(time.mktime(datetime.datetime.utcnow().timetuple()))
+  statii = {}
+  for hwid in hwids:
+    if hwid == '':
+      continue
+
+    statii[hwid] = {}
+    statii[hwid]['timestamp'] = -1
+    statii[hwid]['ok'] = False
+    statii[hwid]['msg'] = ""
+
+    device = ceresdb.devices.find_one({'hwid' : hwid})
+
+    if device['username'] != session['username']:
+      flash('Wrong username [' + session['username'] + '] for device [' + hwid + ']')
+      return redirect(url_for('myceres'))
+
+    try:
+      timestamp = rrdtool.last(str(device['file']))
+      statii[hwid]['timestamp'] = timestamp
+      if (now - timestamp) < 5:
+        statii[hwid]['ok'] = True
+      else:
+        statii[hwid]['msg'] = "No report recieved for {0} seconds".format(now-timestamp)
+    except rrdtool.error as e:
+      statii[hwid]['msg'] = "Error retrieving RRD file. Please file a bug report!"
+
+  return jsonify(data=statii)
+    
+
+######################################################################
 # Get Data Responder
 ######################################################################
 @app.route('/_getdata')
 @login_required
 def getdata():
-  global ceresdb
-
   hwid           = request.args.get('hwid')
   #starttimestamp = request.args.get('starttimestamp')
   #endtimestamp   = request.args.get('endtimestamp')
 
   device = ceresdb.devices.find_one({'hwid' : hwid})
-  print 'Getting data'
   if device['username'] != session['username']:
-    print 'Wrong username [' + session['username'] + '] for device [' + hwid + ']'
-    return ''
+    flash('Wrong username [' + session['username'] + '] for device [' + hwid + ']')
+    return redirect(url_for('myceres'))
 
   try:
     now = int(time.mktime(datetime.datetime.utcnow().timetuple()))
@@ -79,13 +115,14 @@ def getdata():
 def login():
   error = None
   if request.method == 'POST':
+
     username = request.form['username']
     password = request.form['password']
 
     userinfo = ceresdb.users.find_one({'username' : username})
 
     if userinfo == None:
-      return render_template('login.html', error='Invalid Username/Password')
+      return render_template('login.html', error='Invalid Username/Password', username=None)
 
     hashedpassword = bcrypt.hashpw(password, userinfo['hashedpassword'])
     if hashedpassword == userinfo['hashedpassword']:
@@ -94,13 +131,13 @@ def login():
       return redirect(url_for('myceres'))
 
     else:
-      return render_template('login.html', error='Invalid Username/Password')
+      return render_template('login.html', error='Invalid Username/Password', username=None)
   else:
     if 'username' in session:
       flash('You are already logged in!')
       return redirect(url_for('myceres'))
     else:
-      return render_template('login.html', error=None)
+      return render_template('login.html', error=None, username=None)
 
 ######################################################################
 # Logout Page
@@ -130,7 +167,6 @@ def myceres(username=None):
   devices = []
   for device in ceresdb.devices.find({'username' : username}):
     devices.append(str(device['hwid']))
-  print devices
   return render_template('myceres.html', username=username, devices=devices)
 
 
@@ -145,7 +181,7 @@ def devices(hwid=None):
   if deviceinfo == None or deviceinfo['username'] != username:
     flash('You do not own the requested device')
     return redirect(url_for('myceres'))
-  return render_template('hardwareview.html', hwid=hwid)
+  return render_template('hardwareview.html', username=username, hwid=hwid)
 
 if __name__ == '__main__':
 
