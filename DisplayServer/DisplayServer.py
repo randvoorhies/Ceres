@@ -34,7 +34,7 @@ def getstatus():
       continue
 
     statii[hwid] = {}
-    statii[hwid]['timestamp'] = -1
+    statii[hwid]['time'] = -1
     statii[hwid]['ok'] = False
     statii[hwid]['msg'] = ""
 
@@ -46,7 +46,7 @@ def getstatus():
 
     try:
       timestamp = rrdtool.last(str(device['file']))
-      statii[hwid]['timestamp'] = timestamp
+      statii[hwid]['time'] = now-timestamp
       if (now - timestamp) < 5:
         statii[hwid]['ok'] = True
       else:
@@ -113,7 +113,6 @@ def getdata():
 ######################################################################
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-  error = None
   if request.method == 'POST':
 
     username = request.form['username']
@@ -122,28 +121,31 @@ def login():
     userinfo = ceresdb.users.find_one({'username' : username})
 
     if userinfo == None:
-      return render_template('login.html', error='Invalid Username/Password', username=None)
+      flash('Invalid Username/Password')
+      return render_template('login.html', username=None)
 
     hashedpassword = bcrypt.hashpw(password, userinfo['hashedpassword'])
     if hashedpassword == userinfo['hashedpassword']:
+      flash('You have logged in as ' + username)
       session['username'] = username
-
       return redirect(url_for('myceres'))
 
     else:
-      return render_template('login.html', error='Invalid Username/Password', username=None)
+      flash('Invalid Username/Password')
+      return render_template('login.html', username=None)
   else:
     if 'username' in session:
       flash('You are already logged in!')
       return redirect(url_for('myceres'))
     else:
-      return render_template('login.html', error=None, username=None)
+      return render_template('login.html', username=None)
 
 ######################################################################
 # Logout Page
 ######################################################################
 @app.route('/logout')
 def logout():
+  flash('You have logged out')
   session.pop('username', None)
   return redirect(url_for('index'))
 
@@ -188,4 +190,3 @@ if __name__ == '__main__':
   dbconnection = pymongo.Connection()
   ceresdb = dbconnection.ceres
   app.run(debug=True)
-

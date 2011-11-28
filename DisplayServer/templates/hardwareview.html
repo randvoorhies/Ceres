@@ -4,7 +4,7 @@
 <script type=text/javascript src="{{ url_for('static', filename='jquery.flot.selection.js') }}"></script>
 <script type=text/javascript>
   var initialized = 0;
-  $(function () { updatePlot(); });
+  $(document).ready(function(){ updatePlot(); });
 
   function updatePlot() {
     $.getJSON($SCRIPT_ROOT + '/_getdata', {"hwid": "{{ hwid }}"}, function(result) {
@@ -28,15 +28,6 @@
             plotrows += '  <div id="plot_'+name+'" style="width:600px;height:150px;"></div>';
             plotrows += ' </td>';
             plotrows += '</tr>';
-
-
-
-            //plotdivs += "<hr/>";
-            //plotdivs += "<p style=\"font-size:20pt;\">";
-            //if(name == "temperature" || name == "humidity" || name == "light")
-            //  plotdivs += "<img src=\"/static/"+name+"_icon.svg\"/ style=\"height:20px;\"\>";
-            //plotdivs += " " + name+"</p>";
-            //plotdivs += "<div id=\""+name+"\" style=\"width:600px;height:150px;\"></div>";
           }
           plotrows += '</tables>';
           $("#plots").html(plotrows)
@@ -62,13 +53,12 @@
     setTimeout("updatePlot()", 1000);
   }
 
-
 </script>
 
-<div class="page-header"><h1>Device : {{ hwid }}</h1>
+<div class="page-header">
+  <h1>Device : {{ hwid }}</h1>
   <a href="{{ url_for('myceres') }}">&lt;&lt; back</a>
 </div>  
-
 <div id="plots"></div>
 
 {% endblock %}

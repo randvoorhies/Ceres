@@ -4,9 +4,7 @@
 
 <script type=text/javascript>
 
-  $(document).ready(function(){
-      updateStatus();
-      });
+  $(document).ready(function(){ updateStatus(); });
 
   function updateStatus()
   {
@@ -18,17 +16,29 @@
     $.getJSON($SCRIPT_ROOT + '/_getstatus', {"hwids":statusRequest}, function(result) {
         var statii = result.data;
         var hwid = "";
+        var time = 0;
         {% for device in devices %}
+
         hwid = "{{ device }}";
         if(statii[hwid]['ok'])
         {
-        $("#{{ device }}_status").html('<span class="label success">OK</span>');
+          $("#{{ device }}_status").html('<span class="label success">OK</span>');
         }
         else
         {
-          
-        $("#{{ device }}_status").html('<span class="label important">NOT OK</span>');
+          $("#{{ device }}_status").html('<span class="label important">NOT OK</span>');
         }
+
+        time = statii[hwid]['time'];
+        timemsg = '';
+        if(time < 60) timemsg = time + ' seconds ago';
+        else if(time < 3600)   timemsg = Math.round(time/60)    + ' minutes ago';
+        else if(time < 86400)  timemsg = Math.round(time/3600)  + ' hours ago';
+        else if(time < 604800) timemsg = Math.round(time/86400) + ' days ago';
+        else timemsg = time
+
+        $("#{{ device }}_lastupdate").html(timemsg);
+
         {% endfor %}
         });
 
@@ -46,12 +56,14 @@
   <tr>
     <th>Device</th>
     <th>Status</th>
+    <th>Last Contact</th>
   </tr>
   <tbody>
     {% for device in devices %}
     <tr>
       <td> <a href="{{ url_for('devices', hwid=device) }}">{{ device }}</a> </td>
       <td><span id="{{ device }}_status">...</span></td>
+      <td><span id="{{ device }}_lastupdate">...</span></td>
     </tr>
     {% endfor %}
   </tbody>

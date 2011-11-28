@@ -1,9 +1,11 @@
 {% extends "layout.html" %}
 {% block body %}
-  {% if username %}
-  You are logged in as {{ username }}.
-  <a href="{{ url_for('logout') }}">logout</a>, or go to <a href="{{ url_for('myceres') }}">myCeres</a>
-  {% else %}
-    <a href={{ url_for('login') }}>login</a>
-  {% endif %}
+<div class="page-header">
+  <h1>Welcome to Ceres</h1>
+</div>  
+<div class=row">
+  <div class="span10">
+    Blah blah blah, Ceres is the best! Give us cash, and buy our hardware!
+  </div>
+</div>
 {% endblock %}
