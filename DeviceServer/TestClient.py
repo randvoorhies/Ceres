@@ -23,7 +23,7 @@ while True:
   print "humidity : {0}\r\n".format(humidity)
   print "light : {0}\r\n".format(light)
 
-  s.send('hwid : fastdevice\r\n')
+  s.send('hwid : gooddevice\r\n')
   s.send("temperature : {0}\r\n".format(temperature))
   s.send("humidity : {0}\r\n".format(humidity))
   s.send("light : {0}\r\n".format(light))

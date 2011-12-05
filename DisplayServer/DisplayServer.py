@@ -35,8 +35,9 @@ def getstatus():
 
     statii[hwid] = {}
     statii[hwid]['time'] = -1
-    statii[hwid]['ok'] = False
-    statii[hwid]['msg'] = ""
+    statii[hwid]['online']   = False
+    statii[hwid]['msg']  = ""
+    statii[hwid]['values'] = {}
 
     device = ceresdb.devices.find_one({'hwid' : hwid})
 
@@ -46,9 +47,39 @@ def getstatus():
 
     try:
       timestamp = rrdtool.last(str(device['file']))
+
       statii[hwid]['time'] = now-timestamp
       if (now - timestamp) < 5:
-        statii[hwid]['ok'] = True
+        statii[hwid]['online'] = True
+
+        minvals = rrdtool.fetch(str(device['file']), 'MIN',     '--start='+str(timestamp-3600), '--end='+str(timestamp))
+        avgvals = rrdtool.fetch(str(device['file']), 'AVERAGE', '--start='+str(timestamp-1),    '--end='+str(timestamp))
+        maxvals = rrdtool.fetch(str(device['file']), 'MAX',     '--start='+str(timestamp-3600), '--end='+str(timestamp))
+
+        for idx, sensorname in enumerate(avgvals[1]):
+          avgmin=0
+          n = 0
+          for minval in minvals[2]:
+            if minval[idx] != None:
+              avgmin += minval[idx]
+              n += 1
+          if n > 0:
+            avgmin /= float(n)
+
+          avgmax=0
+          n = 0
+          for maxval in maxvals[2]:
+            if maxval[idx] != None:
+              avgmax += maxval[idx]
+              n += 1
+          if n > 0:
+            avgmax /= float(n)
+
+          statii[hwid]['values'][sensorname] = {
+              'min' : str(avgmin)[0:4],
+              'avg' : avgvals[2][0][idx],
+              'max' : str(avgmax)[0:4]}
+
       else:
         statii[hwid]['msg'] = "No report recieved for {0} seconds".format(now-timestamp)
     except rrdtool.error as e:
@@ -80,8 +111,6 @@ def getdata():
         '--end='+str(now))
         #'--start='+starttimestamp,
         #'--end='+endtimestamp)
-        
-    #print 'RES: ' + str(res)
 
     timestamps = res[0]
     names      = res[1]

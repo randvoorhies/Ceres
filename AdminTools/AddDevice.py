@@ -38,12 +38,10 @@ ret = rrdtool.create(
     'RRA:AVERAGE:0.5:1:60',      # AVG: 1-second resolution for a minute
     'RRA:AVERAGE:0.5:10:360',    # AVG: 10-second resolution for an hour
     'RRA:AVERAGE:0.5:30:2880',   # AVG: 30-second resolution for a day
-    'RRA:MIN:0.5:1:60',          # MIN: 1-second resolution for a minute
-    'RRA:MIN:0.5:10:360',        # MIN: 10-second resolution for an hour
-    'RRA:MIN:0.5:30:2880',       # MIN: 30-second resolution for a day
-    'RRA:MAX:0.5:1:60',          # MAX: 1-second resolution for a minute
-    'RRA:MAX:0.5:10:360',        # MAX: 10-second resolution for an hour
-    'RRA:MAX:0.5:30:2880',       # MAX: 30-second resolution for a day
+    'RRA:MIN:0.5:60:60',         # MIN: 1-minute resolution for an hour
+    'RRA:MIN:0.5:3600:168',      # MIN: 1-hour resolution for a week
+    'RRA:MAX:0.5:60:60',         # MAX: 1-minute resolution for an hour
+    'RRA:MAX:0.5:3600:168',      # MAX: 1-hour resolution for a week
     )
 
 if ret:
