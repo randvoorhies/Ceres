@@ -6,9 +6,10 @@ import datetime, time
 import bcrypt
 import rrdtool
 
-ceresdb = None
 app = Flask(__name__)
 app.secret_key = '\xba\xd0\x15\xaeH\xb6\x81M6\x15tb\xf1p4z_\x80\xd8\xf2\xf9\x05\xd1\x03'
+dbconnection = pymongo.Connection()
+ceresdb = dbconnection.ceres
 
 def login_required(f):
   @wraps(f)
@@ -191,7 +192,7 @@ def index(hwid=None):
 ######################################################################
 # User Page
 ######################################################################
-@app.route('/myceres')
+@app.route('/myceres/')
 @login_required
 def myceres(username=None):
   username = session['username']
@@ -216,6 +217,4 @@ def devices(hwid=None):
 
 if __name__ == '__main__':
 
-  dbconnection = pymongo.Connection()
-  ceresdb = dbconnection.ceres
   app.run(debug=True)
