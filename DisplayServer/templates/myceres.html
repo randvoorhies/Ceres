@@ -6,72 +6,76 @@
 
   $(document).ready(function(){ updateStatus(); });
 
-  function updateStatus()
-  {
-    var statusRequest = "";
-    {% for device in devices %}
-      statusRequest += "{{ device }},"; 
-    {% endfor %}
+function configurePlots()
+{
+}
 
-    $.getJSON($SCRIPT_ROOT + '/_getstatus', {"hwids":statusRequest}, function(result) {
-        var statii = result.data;
-        var hwid = "";
-        var time = 0;
-        {% for device in devices %}
+function updateStatus()
+{
+  var statusRequest = "";
+  {% for device in devices %}
+  statusRequest += "{{ device }},"; 
+  {% endfor %}
 
-        hwid = "{{ device }}";
-        if(statii[hwid]['online'])
-        {
-          $("#{{ device }}_status").html('<span class="label success">ONLINE</span>');
+  $.getJSON($SCRIPT_ROOT + '/_getstatus', {"hwids":statusRequest}, function(result) {
+      var statii = result.data;
+      var hwid = "";
+      var time = 0;
+      {% for device in devices %}
 
-          $("#{{ device }}_temperature").html(
-            '<p>'+
-              statii[hwid]['values']['temperature']['avg'] + '&deg; F ' + 
-              '<small>'+ 
-                statii[hwid]['values']['temperature']['min'] + ' / ' + statii[hwid]['values']['temperature']['max'] + 
-              '</small>'+
-            '</p>'
-            );
+      hwid = "{{ device }}";
+      if(statii[hwid]['online'])
+      {
+      $("#{{ device }}_status").html('<span class="label success">ONLINE</span>');
 
-          $("#{{ device }}_humidity").html(
-            '<p>'+
-              statii[hwid]['values']['humidity']['avg'] + ' ' + 
-              '<small>'+ 
-                statii[hwid]['values']['humidity']['min'] + ' / ' + statii[hwid]['values']['humidity']['max'] + 
-              '</small>'+
-            '</p>'
-            );
+      $("#{{ device }}_temperature").html(
+        '<p>'+
+        statii[hwid]['values']['temperature']['avg'] + '&deg; F ' + 
+        '<small>'+ 
+        statii[hwid]['values']['temperature']['min'] + ' / ' + statii[hwid]['values']['temperature']['max'] + 
+        '</small>'+
+        '</p>'
+        );
 
-          $("#{{ device }}_light").html(
-            '<p>'+
-              statii[hwid]['values']['light']['avg'] + ' ' +
-              '<small>'+ 
-                statii[hwid]['values']['light']['min'] + ' / ' + statii[hwid]['values']['light']['max'] + 
-              '</small>'+
-            '</p>'
-            );
-        }
-        else
-        {
-          $("#{{ device }}_status").html('<span class="label important">OFFLINE</span>');
-        }
+      $("#{{ device }}_humidity").html(
+        '<p>'+
+        statii[hwid]['values']['humidity']['avg'] + ' ' + 
+        '<small>'+ 
+        statii[hwid]['values']['humidity']['min'] + ' / ' + statii[hwid]['values']['humidity']['max'] + 
+        '</small>'+
+        '</p>'
+        );
+
+      $("#{{ device }}_light").html(
+          '<p>'+
+          statii[hwid]['values']['light']['avg'] + ' ' +
+          '<small>'+ 
+          statii[hwid]['values']['light']['min'] + ' / ' + statii[hwid]['values']['light']['max'] + 
+          '</small>'+
+          '</p>'
+          );
+      }
+      else
+      {
+        $("#{{ device }}_status").html('<span class="label important">OFFLINE</span>');
+      }
 
 
-        time = statii[hwid]['time'];
-        timemsg = '';
-        if(time < 60) timemsg = time + ' seconds ago';
-        else if(time < 3600)   timemsg = Math.round(time/60)    + ' minutes ago';
-        else if(time < 86400)  timemsg = Math.round(time/3600)  + ' hours ago';
-        else timemsg = Math.round(time/86400) + ' days ago';
+      time = statii[hwid]['time'];
+      timemsg = '';
+      if(time < 60) timemsg = time + ' seconds ago';
+      else if(time < 3600)   timemsg = Math.round(time/60)    + ' minutes ago';
+      else if(time < 86400)  timemsg = Math.round(time/3600)  + ' hours ago';
+      else timemsg = Math.round(time/86400) + ' days ago';
 
-        $("#{{ device }}_lastupdate").html(timemsg);
+      $("#{{ device }}_lastupdate").html(timemsg);
 
-        {% endfor %}
-        });
+      {% endfor %}
+  });
 
-    setTimeout("updateStatus()", 1000);
-  };
-  
+  setTimeout("updateStatus()", 1000);
+};
+
 </script>
 
 <h1>Hello, {{ username }}</h1>

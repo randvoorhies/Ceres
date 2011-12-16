@@ -4,7 +4,9 @@ from flask import Flask, jsonify, render_template, request, json, session, flash
 import pymongo
 import datetime, time
 import bcrypt
+import re
 import rrdtool
+import operator
 
 app = Flask(__name__)
 app.secret_key = '\xba\xd0\x15\xaeH\xb6\x81M6\x15tb\xf1p4z_\x80\xd8\xf2\xf9\x05\xd1\x03'
@@ -92,13 +94,52 @@ def getstatus():
 
   return jsonify(data=statii)
     
+######################################################################
+# List Sources Responder
+######################################################################
+@app.route('/_listSources')
+@login_required
+def listSources():
+  hwid = request.args.get('hwid')
+  device = ceresdb.devices.find_one({'hwid' : hwid})
+  if device['username'] != session['username']:
+    flash('Wrong username [' + session['username'] + '] for device [' + hwid + ']')
+    return redirect(url_for('myceres'))
+
+  info = rrdtool.info(str(device['file']))
+  step = int(info['step'])
+
+  # Pull out all of the source names (e.g. temperature, light, etc..)
+  r = re.compile('ds\[(.*)\]\.type')
+  sourcenames = [match.group(1) for match in [r.match(key) for key in info if r.match(key)]]
+  print sourcenames
+
+  RRAs = []
+  # Extract the info about the RRAs
+  r = re.compile('rra\[(.*)\]\.cf')
+  for RRAid in sorted([int(match.group(1)) for match in [r.match(key) for key in info if r.match(key)]]):
+    rra = 'rra['+str(RRAid)+']'
+
+    if info[rra + '.cf'] != 'AVERAGE':
+      continue
+
+    print 'GOT RRA'
+
+    RRAs.append({
+        'resolution' : info[rra + '.pdp_per_row'] * step,
+        'totaltime'  : info[rra + '.pdp_per_row'] * step * info[rra + '.rows']
+    })
+
+  RRAs = sorted(RRAs, key=lambda k: k['resolution'])
+  return jsonify(data={'RRAs' : RRAs, 'sources' : sourcenames})
+
 
 ######################################################################
-# Get Data Responder
+# Update Sources Responder
 ######################################################################
-@app.route('/_getdata')
+@app.route('/_updateSources')
 @login_required
-def getdata():
+def updateSources():
   hwid           = request.args.get('hwid')
   #starttimestamp = request.args.get('starttimestamp')
   #endtimestamp   = request.args.get('endtimestamp')
