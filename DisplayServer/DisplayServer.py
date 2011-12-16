@@ -8,7 +8,11 @@ import rrdtool
 
 app = Flask(__name__)
 app.secret_key = '\xba\xd0\x15\xaeH\xb6\x81M6\x15tb\xf1p4z_\x80\xd8\xf2\xf9\x05\xd1\x03'
-dbconnection = pymongo.Connection()
+try:
+  dbconnection = pymongo.Connection()
+except pymongo.errors.AutoReconnect:
+  print 'Can not connect to MongoDB server!'
+  exit(-1)
 ceresdb = dbconnection.ceres
 
 def login_required(f):
