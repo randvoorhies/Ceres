@@ -3,66 +3,56 @@
 <script type=text/javascript src="{{ url_for('static', filename='jquery.flot.js') }}"></script>
 <script type=text/javascript src="{{ url_for('static', filename='jquery.flot.selection.js') }}"></script>
 <script type=text/javascript>
-  var initialized = 0;
 
+var Sources = [{% for source in sources %} "{{source}}", {% endfor %}];
+var RRAs = [{% for RRA in RRAs %} {"resolution":{{RRA['resolution']}}, "totaltime":{{RRA['totaltime']}} }, {% endfor %}];
 
-  $(document).ready(function(){ listSources(); updateSources(); });
+$(document).ready(function(){ listSources(); updateSources(); });
 
-var RRAs = Null;
 function listSources() {
+  var plotrows = '';
+  plotrows += '<table>';
+  for(source in Sources) {
+    var sourcename = Sources[source];
+    plotrows += '<tr>';
+    plotrows += ' <td>';
+    if(sourcename == "temperature" || sourcename == "humidity" || sourcename == "light")
+      plotrows += "<img src=\"/static/"+sourcename+"_icon.svg\"/ style=\"height:30px;\"\>";
+    plotrows += " <h4>" + sourcename+"</h4>";
+    plotrows += ' </td>';
+    plotrows += ' <td>';
+    plotrows += '  <div id="plot_'+sourcename+'" style="width:600px;height:150px;"></div>';
+    plotrows += ' </td>';
 
-  $.getJSON($SCRIPT_ROOT + '/_listSources', {"hwid" : "{{ hwid }}"}, function(result) {
-      sources = result.data.sources;
-      RRAs = result.data.RRAs;
+    plotrows += ' <td>';
+    plotrows += ' <br/>';
+    for(RRAid in RRAs)
+    {
+      RRA = RRAs[RRAid];
+      resolution = RRA.resolution;
+      totaltime = RRA.totaltime;
 
-      var plotrows = '';
-      plotrows += '<table>';
-      for(source in sources) {
-        var sourcename = sources[source];
-        plotrows += '<tr>';
-        plotrows += ' <td>';
-        if(sourcename == "temperature" || sourcename == "humidity" || sourcename == "light")
-          plotrows += "<img src=\"/static/"+sourcename+"_icon.svg\"/ style=\"height:30px;\"\>";
-        plotrows += " <h4>" + sourcename+"</h4>";
-        plotrows += ' </td>';
-        plotrows += ' <td>';
-        plotrows += '  <div id="plot_'+sourcename+'" style="width:600px;height:150px;"></div>';
-        plotrows += ' </td>';
+      if(resolution < 60) resolution = resolution + 'sec';
+      else if(resolution < 3600) resolution = resolution/60 + 'min';
+      else if(resolution < 86400) resolution = resolution/3600 + 'hour';
+      else resolution = resolution/86400 + 'week';
 
-        plotrows += ' <td>';
-        plotrows += ' <br/>';
-        for(RRAid in RRAs)
-        {
-          RRA = RRAs[RRAid];
-          resolution = RRA.resolution;
-          totaltime = RRA.totaltime;
+      if(totaltime < 60) totaltime = totaltime + 'sec';
+      else if(totaltime < 3600) totaltime = totaltime/60 + 'min';
+      else if(totaltime < 86400) totaltime = totaltime/3600 + 'hour';
+      else totaltime = totaltime/86400 + 'week';
 
-          if(resolution < 60) resolution = resolution + 'sec';
-          else if(resolution < 3600) resolution = resolution/60 + 'min';
-          else if(resolution < 86400) resolution = resolution/3600 + 'hour';
-          else resolution = resolution/86400 + 'week';
+      plotrows += ' <button class="btn small">';
+      plotrows += resolution + ' / ' + totaltime;
+      plotrows += ' </button>';
+      plotrows += ' <br/>';
+    }
 
-          if(totaltime < 60) totaltime = totaltime + 'sec';
-          else if(totaltime < 3600) totaltime = totaltime/60 + 'min';
-          else if(totaltime < 86400) totaltime = totaltime/3600 + 'hour';
-          else totaltime = totaltime/86400 + 'week';
-
-          plotrows += ' <button class="btn small">';
-          plotrows += resolution + ' / ' + totaltime;
-          plotrows += ' </button>';
-          plotrows += ' <br/>';
-        }
-
-        plotrows += ' </td>';
-
-
-
-        plotrows += '</tr>';
-      }
-      plotrows += '</tables>';
-      $("#plots").html(plotrows)
-  });
-
+    plotrows += ' </td>';
+    plotrows += '</tr>';
+  }
+  plotrows += '</tables>';
+  $("#plots").html(plotrows)
 }
 
 function updateSources() {

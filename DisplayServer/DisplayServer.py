@@ -254,11 +254,37 @@ def myceres(username=None):
 @login_required
 def devices(hwid=None):
   username = session['username']
-  deviceinfo = ceresdb.devices.find_one({'hwid' : hwid})
-  if deviceinfo == None or deviceinfo['username'] != username:
+  device = ceresdb.devices.find_one({'hwid' : hwid})
+  if device == None or device['username'] != username:
     flash('You do not own the requested device')
     return redirect(url_for('myceres'))
-  return render_template('hardwareview.html', username=username, hwid=hwid)
+
+  info = rrdtool.info(str(device['file']))
+  step = int(info['step'])
+
+  # Pull out all of the source names (e.g. temperature, light, etc..)
+  r = re.compile('ds\[(.*)\]\.type')
+  sources = [match.group(1) for match in [r.match(key) for key in info if r.match(key)]]
+
+  RRAs = []
+  # Extract the info about the RRAs
+  r = re.compile('rra\[(.*)\]\.cf')
+  for RRAid in sorted([int(match.group(1)) for match in [r.match(key) for key in info if r.match(key)]]):
+    rra = 'rra['+str(RRAid)+']'
+
+    if info[rra + '.cf'] != 'AVERAGE':
+      continue
+
+    print 'GOT RRA'
+
+    RRAs.append({
+        'resolution' : info[rra + '.pdp_per_row'] * step,
+        'totaltime'  : info[rra + '.pdp_per_row'] * step * info[rra + '.rows']
+    })
+
+  RRAs = sorted(RRAs, key=lambda k: k['resolution'])
+
+  return render_template('hardwareview.html', username=username, hwid=hwid, RRAs=RRAs, sources=sources)
 
 if __name__ == '__main__':
 
