@@ -7,9 +7,8 @@ from twisted.python import log
 import twisted.python
 import pymongo
 import rrdtool
-import datetime
 import threading
-import time
+import time, datetime, calendar
 
 ######################################################################
 class ProtocolException(Exception):
@@ -20,7 +19,7 @@ class ProtocolException(Exception):
 ######################################################################
 class DeviceProtocol(LineReceiver):
   def connectionMade(self):
-    self.now = datetime.datetime.utcnow()
+    self.now = int(calendar.timegm(time.gmtime()))
     self.lines = 0
     self.data = {}
     self.hwid = ''
@@ -35,7 +34,8 @@ class DeviceProtocol(LineReceiver):
       templatestr += dsid + ':'
     templatestr = templatestr[0:-1]
 
-    nowstr = str(int(time.mktime(self.now.timetuple())))
+    nowstr = str(int(calendar.timegm(time.gmtime())))
+
     datastr = nowstr
     for value in self.data.values():
       datastr += ':' + value
@@ -43,7 +43,6 @@ class DeviceProtocol(LineReceiver):
     rrdlock.acquire()
     try:
       ret = rrdtool.update(str(self.rrdfile), templatestr, datastr)
-      print 'Wrote data at time ' + nowstr + ' to ' + self.rrdfile
     except rrdtool.error as e:
       log.msg('Error writing to rrdfile for hwid [' + self.hwid +']: ' + str(e))
     finally:

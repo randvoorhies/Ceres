@@ -2,7 +2,7 @@
 from functools import wraps
 from flask import Flask, jsonify, render_template, request, json, session, flash, redirect, url_for, g
 import pymongo
-import datetime, time
+import datetime, time, calendar
 import bcrypt
 import re
 import rrdtool
@@ -25,6 +25,58 @@ def login_required(f):
     return f(*args, **kwargs)
   return decorated_function
 
+def utcnow():
+  return int(calendar.timegm(time.gmtime()))
+
+######################################################################
+# Get Data Responder 
+######################################################################
+@app.route('/_getdata')
+@login_required
+def getdata():
+  hwid        = request.args.get('hwid')
+  start       = request.args.get('start')
+  end         = request.args.get('end')
+  resolution  = request.args.get('resolution')
+
+  if end == 'N': end = str(utcnow())
+
+  device = ceresdb.devices.find_one({'hwid' : hwid})
+  if device['username'] != session['username']:
+    flash('Wrong username [' + session['username'] + '] for device [' + hwid + ']')
+    return redirect(url_for('myceres'))
+
+  try:
+    now = utcnow()
+    res = rrdtool.fetch(str(device['file']), 'AVERAGE',
+        '--start='+str(now-60),
+        '--start='+start,
+        '--end='+end)
+
+    timestamps = res[0]
+    names      = res[1]
+    data       = res[2]
+
+    result = {}
+    result['datastreams'] = {}
+    resdata = []
+
+    for n in names:
+      resdata.append([])
+
+    for t,d in enumerate(data):
+      timestamp = (timestamps[0] + t*timestamps[2]) * 1000
+      for i, p in enumerate(d):
+        resdata[i].append((timestamp,p))
+
+    for i,d in enumerate(resdata):
+      result['datastreams'][names[i]] = d
+
+    return jsonify(data=result)
+  except rrdtool.error as e:
+    print ' Oh crap...' + e.str()
+  return ''
+
 ######################################################################
 # Get Status Responder
 ######################################################################
@@ -34,11 +86,10 @@ def getstatus():
   hwids = request.args.get('hwids').split(',')
   hwids = map(lambda x: str(x), hwids)
 
-  now = int(time.mktime(datetime.datetime.utcnow().timetuple()))
+  now = utcnow()
   statii = {}
   for hwid in hwids:
-    if hwid == '':
-      continue
+    if hwid == '': continue
 
     statii[hwid] = {}
     statii[hwid]['time'] = -1
@@ -47,6 +98,8 @@ def getstatus():
     statii[hwid]['values'] = {}
 
     device = ceresdb.devices.find_one({'hwid' : hwid})
+
+    if device == None: continue
 
     if device['username'] != session['username']:
       flash('Wrong username [' + session['username'] + '] for device [' + hwid + ']')
@@ -150,13 +203,10 @@ def updateSources():
     return redirect(url_for('myceres'))
 
   try:
-    now = int(time.mktime(datetime.datetime.utcnow().timetuple()))
-    print 'Fetching...' + device['file']
+    now = utcnow()
     res = rrdtool.fetch(str(device['file']), 'AVERAGE',
         '--start='+str(now-60),
         '--end='+str(now))
-        #'--start='+starttimestamp,
-        #'--end='+endtimestamp)
 
     timestamps = res[0]
     names      = res[1]
@@ -266,25 +316,7 @@ def devices(hwid=None):
   r = re.compile('ds\[(.*)\]\.type')
   sources = [match.group(1) for match in [r.match(key) for key in info if r.match(key)]]
 
-  RRAs = []
-  # Extract the info about the RRAs
-  r = re.compile('rra\[(.*)\]\.cf')
-  for RRAid in sorted([int(match.group(1)) for match in [r.match(key) for key in info if r.match(key)]]):
-    rra = 'rra['+str(RRAid)+']'
-
-    if info[rra + '.cf'] != 'AVERAGE':
-      continue
-
-    print 'GOT RRA'
-
-    RRAs.append({
-        'resolution' : info[rra + '.pdp_per_row'] * step,
-        'totaltime'  : info[rra + '.pdp_per_row'] * step * info[rra + '.rows']
-    })
-
-  RRAs = sorted(RRAs, key=lambda k: k['resolution'])
-
-  return render_template('hardwareview.html', username=username, hwid=hwid, RRAs=RRAs, sources=sources)
+  return render_template('hardwareview.html', username=username, hwid=hwid, sources=sources)
 
 if __name__ == '__main__':
 

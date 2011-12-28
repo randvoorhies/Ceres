@@ -1,8 +1,9 @@
 #!/usr/bin/env python
-
 import socket
 import time
 import random
+
+hwid = "12345"
 
 TCP_IP = '127.0.0.1'
 TCP_PORT = 10000
@@ -23,7 +24,7 @@ while True:
   print "humidity : {0}\r\n".format(humidity)
   print "light : {0}\r\n".format(light)
 
-  s.send('hwid : gooddevice\r\n')
+  s.send("hwid : " + hwid + "\r\n")
   s.send("temperature : {0}\r\n".format(temperature))
   s.send("humidity : {0}\r\n".format(humidity))
   s.send("light : {0}\r\n".format(light))

@@ -2,8 +2,7 @@
 import pymongo
 import rrdtool
 import os
-import time
-import datetime
+import time, datetime, calendar
 
 ceresdb = pymongo.Connection().ceres
 
@@ -16,9 +15,9 @@ user = ceresdb.users.find_one({'username' : username})
 
 hwid = raw_input('HWID: ')
 
-#if ceresdb.devices.find({'hwid' : hwid}).count() != 0:
-#  print 'Invalid hwid - already exists! Database entry not created'
-#  exit(-1)
+if ceresdb.devices.find({'hwid' : hwid}).count() != 0:
+  print 'Invalid hwid - already exists! Database entry not created'
+  exit(-1)
 
 systemrrdpath = ceresdb.config.find_one({'key' : 'rrdpath'})['value']
 
@@ -28,7 +27,7 @@ if not os.path.exists(rrdpath):
 rrdfilename = os.path.join(rrdpath, hwid + '.rrd')
 print 'Creating file: ' + rrdfilename
 
-now = str(int(time.mktime(datetime.datetime.utcnow().timetuple())))
+now = str(int(calendar.timegm(time.gmtime())))
 
 ret = rrdtool.create(
     str(rrdfilename), '--step', '1', '--start', now, 
@@ -41,7 +40,7 @@ ret = rrdtool.create(
     'RRA:MIN:0.5:60:60',         # MIN: 1-minute resolution for an hour
     'RRA:MIN:0.5:3600:168',      # MIN: 1-hour resolution for a week
     'RRA:MAX:0.5:60:60',         # MAX: 1-minute resolution for an hour
-    'RRA:MAX:0.5:3600:168',      # MAX: 1-hour resolution for a week
+    'RRA:MAX:0.5:3600:168'       # MAX: 1-hour resolution for a week
     )
 
 if ret:

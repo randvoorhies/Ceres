@@ -4,8 +4,12 @@
 <script type=text/javascript src="{{ url_for('static', filename='jquery.flot.selection.js') }}"></script>
 <script type=text/javascript>
 
-var Sources = [{% for source in sources %} "{{source}}", {% endfor %}];
-var RRAs = [{% for RRA in RRAs %} {"resolution":{{RRA['resolution']}}, "totaltime":{{RRA['totaltime']}} }, {% endfor %}];
+  var Sources = 
+  [{% for source in sources %}
+    {
+      "name" : "{{source}}" 
+    }, {% endfor %}
+];
 
 $(document).ready(function(){ listSources(); updateSources(); });
 
@@ -13,46 +17,38 @@ function listSources() {
   var plotrows = '';
   plotrows += '<table>';
   for(source in Sources) {
-    var sourcename = Sources[source];
+    var sourcename = Sources[source].name;
     plotrows += '<tr>';
     plotrows += ' <td>';
     if(sourcename == "temperature" || sourcename == "humidity" || sourcename == "light")
       plotrows += "<img src=\"/static/"+sourcename+"_icon.svg\"/ style=\"height:30px;\"\>";
-    plotrows += " <h4>" + sourcename+"</h4>";
+    plotrows += ' <h4>' + sourcename+'</h4>';
+    plotrows += ' <div id="currval_'+sourcename+'"></div>';
     plotrows += ' </td>';
     plotrows += ' <td>';
     plotrows += '  <div id="plot_'+sourcename+'" style="width:600px;height:150px;"></div>';
     plotrows += ' </td>';
-
     plotrows += ' <td>';
-    plotrows += ' <br/>';
-    for(RRAid in RRAs)
-    {
-      RRA = RRAs[RRAid];
-      resolution = RRA.resolution;
-      totaltime = RRA.totaltime;
-
-      if(resolution < 60) resolution = resolution + 'sec';
-      else if(resolution < 3600) resolution = resolution/60 + 'min';
-      else if(resolution < 86400) resolution = resolution/3600 + 'hour';
-      else resolution = resolution/86400 + 'week';
-
-      if(totaltime < 60) totaltime = totaltime + 'sec';
-      else if(totaltime < 3600) totaltime = totaltime/60 + 'min';
-      else if(totaltime < 86400) totaltime = totaltime/3600 + 'hour';
-      else totaltime = totaltime/86400 + 'week';
-
-      plotrows += ' <button class="btn small">';
-      plotrows += resolution + ' / ' + totaltime;
-      plotrows += ' </button>';
-      plotrows += ' <br/>';
-    }
-
+    plotrows += '  <div id="plot_'+sourcename+'_overview" style="width:200px;height:100px;"></div>';
     plotrows += ' </td>';
     plotrows += '</tr>';
   }
   plotrows += '</tables>';
-  $("#plots").html(plotrows)
+  $("#plots").html(plotrows);
+
+  for(source in Sources) {
+    var sourcename = Sources[source].name;
+    var sourcedata = [];
+    var overview = $.plot($("#plot_"+sourcename+"_overview"), [
+      {
+        data: sourcedata,
+        lines: {show: true, fill: true},
+        shadowSize: 0,
+        selection: {mode:"x"}
+      }], {xaxis: {mode: "time"}});
+  }
+
+
 }
 
 function updateSources() {
@@ -64,6 +60,8 @@ function updateSources() {
       for(name in datastreams)
       {
         var datastream = datastreams[name];
+
+        // Update the plot
         $.plot($("#plot_"+name), [
         {
           data: datastream,
@@ -71,12 +69,24 @@ function updateSources() {
           shadowSize: 0
         }], {xaxis: {mode: "time"}});
 
+        // Update the current value
+        var currval = "N/A";
+        var i = datastream.length-1;
+        while(i > 0)
+        {
+          var v = datastream[i][1];
+          if(v != null)
+          { currval = v; break; }
+          i = i-1;
+        }
+        $("#currval_"+name).html(currval);
+
       }
 
-});
+      });
 
-// Update once per second
-setTimeout("updateSources()", 1000);
+  // Update once per second
+  setTimeout("updateSources()", 1000);
 }
 
 </script>
