@@ -51,41 +51,46 @@ function listSources() {
 
 }
 
-function updateSources() {
-  $.getJSON($SCRIPT_ROOT + '/_updateSources', {"hwid": "{{ hwid }}"}, function(result) {
-
-      var datastreams = result.data.datastreams;
-
-      // Plot all that data
-      for(name in datastreams)
+function updateData(_hwid, _sourcename, _start, _end, _resolution)
+{
+  data = []
+  $.getJSON($SCRIPT_ROOT + '/_getdata', 
       {
-        var datastream = datastreams[name];
+        hwid       : _hwid,
+        source     : _sourcename,
+        start      : _start,
+        end        : _end,
+        resolution : _resolution
+      },
+      function(data) {
+
+        var datastream = data.data;
 
         // Update the plot
-        $.plot($("#plot_"+name), [
+        $.plot($("#plot_"+_sourcename), [
         {
           data: datastream,
           lines: {show: true, fill: true},
-          shadowSize: 0
+          shadowSize: 0                         
         }], {xaxis: {mode: "time"}});
 
         // Update the current value
         var currval = "N/A";
-        var i = datastream.length-1;
-        while(i > 0)
-        {
-          var v = datastream[i][1];
-          if(v != null)
-          { currval = v; break; }
-          i = i-1;
-        }
-        $("#currval_"+name).html(currval);
-
-      }
-
+        if(datastream.length > 0) 
+          currval = datastream[datastream.length-1][1];
+        $("#currval_"+_sourcename).html(currval);
       });
+}
 
-  // Update once per second
+function updateSources() {
+  var requests = [];
+  for(var sidx=0; sidx<Sources.length; ++sidx)
+  {
+    var sourcename = Sources[sidx]["name"];
+
+    updateData("{{hwid}}", sourcename, -60, "N", 1);
+  }
+
   setTimeout("updateSources()", 1000);
 }
 

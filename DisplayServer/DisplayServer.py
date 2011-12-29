@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 from functools import wraps
+import flask
+import werkzeug
 from flask import Flask, jsonify, render_template, request, json, session, flash, redirect, url_for, g
 import pymongo
 import datetime, time, calendar
@@ -34,48 +36,46 @@ def utcnow():
 @app.route('/_getdata')
 @login_required
 def getdata():
-  hwid        = request.args.get('hwid')
-  start       = request.args.get('start')
-  end         = request.args.get('end')
-  resolution  = request.args.get('resolution')
-
-  if end == 'N': end = str(utcnow())
+  hwid        = request.args.get('hwid',       default='')
+  source      = request.args.get('source',     default='')
+  start       = int(request.args.get('start',  default=-60))
+  end         = request.args.get('end',        default='N')
+  resolution  = request.args.get('resolution', default='1')
 
   device = ceresdb.devices.find_one({'hwid' : hwid})
   if device['username'] != session['username']:
     flash('Wrong username [' + session['username'] + '] for device [' + hwid + ']')
     return redirect(url_for('myceres'))
+  
+  now = utcnow()
 
-  try:
-    now = utcnow()
-    res = rrdtool.fetch(str(device['file']), 'AVERAGE',
-        '--start='+str(now-60),
-        '--start='+start,
-        '--end='+end)
+  if start < 0: start = now + start
+  start = str(start)
 
-    timestamps = res[0]
-    names      = res[1]
-    data       = res[2]
+  if end == 'N': end = str(now)
 
-    result = {}
-    result['datastreams'] = {}
-    resdata = []
+  now = utcnow()
+  res = rrdtool.fetch(str(device['file']), 'AVERAGE',
+      '--start='+str(start),
+      '--end='+str(end),
+      '--resolution='+str(resolution))
 
-    for n in names:
-      resdata.append([])
+  timestamps = res[0]
+  names      = res[1]
+  data       = res[2]
 
-    for t,d in enumerate(data):
-      timestamp = (timestamps[0] + t*timestamps[2]) * 1000
-      for i, p in enumerate(d):
-        resdata[i].append((timestamp,p))
+  # Find the requested source name
+  nameidx = names.index(source);
 
-    for i,d in enumerate(resdata):
-      result['datastreams'][names[i]] = d
+  result = []
 
-    return jsonify(data=result)
-  except rrdtool.error as e:
-    print ' Oh crap...' + e.str()
-  return ''
+  for t,d in enumerate(data):
+    timestamp = (timestamps[0] + t*timestamps[2]) * 1000
+    if d[nameidx] != None:
+      result.append([timestamp, d[nameidx]])
+
+  print 'Successful result for ' + source + ' ( ' + str(len(result)) + ' elements)'
+  return jsonify(data=result)
 
 ######################################################################
 # Get Status Responder
