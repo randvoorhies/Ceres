@@ -24,6 +24,10 @@ def login_required(f):
   def decorated_function(*args, **kwargs):
     if not 'username' in session:
       return redirect(url_for('login'))
+
+    if ceresdb.users.find_one({'username' : session['username']}) == None:
+      return redirect(url_for('login'))
+
     return f(*args, **kwargs)
   return decorated_function
 
@@ -46,6 +50,11 @@ def getdata():
   if device['username'] != session['username']:
     flash('Wrong username [' + session['username'] + '] for device [' + hwid + ']')
     return redirect(url_for('myceres'))
+
+  # Get the user's timezone
+  userinfo = ceresdb.users.find_one({'username' : session['username']})
+  timezone = float(userinfo['settings']['timezone'])
+  timezoneoffset = timezone * 60 * 60 * 1000
   
   now = utcnow()
 
@@ -72,9 +81,8 @@ def getdata():
   for t,d in enumerate(data):
     timestamp = (timestamps[0] + t*timestamps[2]) * 1000
     if d[nameidx] != None:
-      result.append([timestamp, d[nameidx]])
+      result.append([timestamp + timezoneoffset, d[nameidx]])
 
-  print 'Successful result for ' + source + ' ( ' + str(len(result)) + ' elements)'
   return jsonify(data=result)
 
 ######################################################################
@@ -105,45 +113,42 @@ def getstatus():
       flash('Wrong username [' + session['username'] + '] for device [' + hwid + ']')
       return redirect(url_for('myceres'))
 
-    try:
-      timestamp = rrdtool.last(str(device['file']))
+    timestamp = rrdtool.last(str(device['file']))
 
-      statii[hwid]['time'] = now-timestamp
-      if (now - timestamp) < 5:
-        statii[hwid]['online'] = True
+    statii[hwid]['time'] = now-timestamp
+    if (now - timestamp) < 5:
+      statii[hwid]['online'] = True
 
-        minvals = rrdtool.fetch(str(device['file']), 'MIN',     '--start='+str(timestamp-3600), '--end='+str(timestamp))
-        avgvals = rrdtool.fetch(str(device['file']), 'AVERAGE', '--start='+str(timestamp-1),    '--end='+str(timestamp))
-        maxvals = rrdtool.fetch(str(device['file']), 'MAX',     '--start='+str(timestamp-3600), '--end='+str(timestamp))
+      minvals = rrdtool.fetch(str(device['file']), 'MIN',     '--start='+str(timestamp-3600), '--end='+str(timestamp))
+      avgvals = rrdtool.fetch(str(device['file']), 'AVERAGE', '--start='+str(timestamp-1),    '--end='+str(timestamp))
+      maxvals = rrdtool.fetch(str(device['file']), 'MAX',     '--start='+str(timestamp-3600), '--end='+str(timestamp))
 
-        for idx, sensorname in enumerate(avgvals[1]):
-          avgmin=0
-          n = 0
-          for minval in minvals[2]:
-            if minval[idx] != None:
-              avgmin += minval[idx]
-              n += 1
-          if n > 0:
-            avgmin /= float(n)
+      for idx, sensorname in enumerate(avgvals[1]):
+        avgmin=0
+        n = 0
+        for minval in minvals[2]:
+          if minval[idx] != None:
+            avgmin += minval[idx]
+            n += 1
+        if n > 0:
+          avgmin /= float(n)
 
-          avgmax=0
-          n = 0
-          for maxval in maxvals[2]:
-            if maxval[idx] != None:
-              avgmax += maxval[idx]
-              n += 1
-          if n > 0:
-            avgmax /= float(n)
+        avgmax=0
+        n = 0
+        for maxval in maxvals[2]:
+          if maxval[idx] != None:
+            avgmax += maxval[idx]
+            n += 1
+        if n > 0:
+          avgmax /= float(n)
 
-          statii[hwid]['values'][sensorname] = {
-              'min' : str(avgmin)[0:4],
-              'avg' : avgvals[2][0][idx],
-              'max' : str(avgmax)[0:4]}
+        statii[hwid]['values'][sensorname] = {
+            'min' : str(avgmin)[0:4],
+            'avg' : avgvals[2][0][idx],
+            'max' : str(avgmax)[0:4]}
 
-      else:
-        statii[hwid]['msg'] = "No report recieved for {0} seconds".format(now-timestamp)
-    except rrdtool.error as e:
-      statii[hwid]['msg'] = "Error retrieving RRD file. Please file a bug report!"
+    else:
+      statii[hwid]['msg'] = "No report recieved for {0} seconds".format(now-timestamp)
 
   return jsonify(data=statii)
     
@@ -165,7 +170,6 @@ def listSources():
   # Pull out all of the source names (e.g. temperature, light, etc..)
   r = re.compile('ds\[(.*)\]\.type')
   sourcenames = [match.group(1) for match in [r.match(key) for key in info if r.match(key)]]
-  print sourcenames
 
   RRAs = []
   # Extract the info about the RRAs
@@ -176,8 +180,6 @@ def listSources():
     if info[rra + '.cf'] != 'AVERAGE':
       continue
 
-    print 'GOT RRA'
-
     RRAs.append({
         'resolution' : info[rra + '.pdp_per_row'] * step,
         'totaltime'  : info[rra + '.pdp_per_row'] * step * info[rra + '.rows']
@@ -185,53 +187,6 @@ def listSources():
 
   RRAs = sorted(RRAs, key=lambda k: k['resolution'])
   return jsonify(data={'RRAs' : RRAs, 'sources' : sourcenames})
-
-
-######################################################################
-# Update Sources Responder
-######################################################################
-@app.route('/_updateSources')
-@login_required
-def updateSources():
-  hwid           = request.args.get('hwid')
-  #starttimestamp = request.args.get('starttimestamp')
-  #endtimestamp   = request.args.get('endtimestamp')
-
-  device = ceresdb.devices.find_one({'hwid' : hwid})
-  if device['username'] != session['username']:
-    flash('Wrong username [' + session['username'] + '] for device [' + hwid + ']')
-    return redirect(url_for('myceres'))
-
-  try:
-    now = utcnow()
-    res = rrdtool.fetch(str(device['file']), 'AVERAGE',
-        '--start='+str(now-60),
-        '--end='+str(now))
-
-    timestamps = res[0]
-    names      = res[1]
-    data       = res[2]
-
-    result = {}
-    result['datastreams'] = {}
-    resdata = []
-
-    for n in names:
-      resdata.append([])
-
-    for t,d in enumerate(data):
-      timestamp = (timestamps[0] + t*timestamps[2]) * 1000
-      for i, p in enumerate(d):
-        resdata[i].append((timestamp,p))
-
-    for i,d in enumerate(resdata):
-      result['datastreams'][names[i]] = d
-
-    return jsonify(data=result)
-  except rrdtool.error as e:
-    print ' Oh crap...' + e.str()
-  return ''
-
 
 ######################################################################
 # Login Page
@@ -296,6 +251,42 @@ def myceres(username=None):
     devices.append(str(device['hwid']))
   return render_template('myceres.html', username=username, devices=devices)
 
+######################################################################
+# Settings Page
+######################################################################
+@app.route('/settings/')
+@login_required
+def settings(username=None):
+  username = session['username']
+  user = ceresdb.users.find_one({'username' : username})
+
+  settings = {'bad' : 'value'}
+  if "settings" in user: settings = user['settings']
+
+  return render_template('settings.html', username=username, settings=settings)
+
+######################################################################
+# Save Settings Responder
+######################################################################
+@app.route('/_savesettings', methods=['POST'])
+@login_required
+def savesettings(username=None):
+  username = session['username']
+
+  timezone = request.form['timezone']
+
+  ceresdb.users.update({'username' : username},
+      {
+        "$set" :
+          {"settings" :
+            {
+              "timezone" : timezone
+            }
+          }
+      })
+  flash('Settings Saved')
+
+  return redirect(url_for('settings'))
 
 ######################################################################
 # Device Page
@@ -319,5 +310,4 @@ def devices(hwid=None):
   return render_template('hardwareview.html', username=username, hwid=hwid, sources=sources)
 
 if __name__ == '__main__':
-
   app.run(debug=True)

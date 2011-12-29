@@ -23,5 +23,9 @@ hashedpassword = bcrypt.hashpw(password1, bcrypt.gensalt())
 
 ceresdb.users.save({
   'username'       : username,
-  'hashedpassword' : hashedpassword
+  'hashedpassword' : hashedpassword,
+  'settings' : 
+    {
+      'timezone' : -8
+    }
   })
