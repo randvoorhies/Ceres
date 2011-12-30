@@ -5,51 +5,108 @@
 <script type=text/javascript>
 
   var Sources = 
-  [{% for source in sources %}
-    {
-      "name" : "{{source}}" 
-    }, {% endfor %}
-];
-
-$(document).ready(function(){ listSources(); updateSources(); });
-
-function listSources() {
+  {
+   {% for source in sources %}
+   {{source}} : { updater : null }, 
+   {% endfor %}
+  };
+    
+$(document).ready(function(){
   var plotrows = '';
   plotrows += '<table>';
-  for(source in Sources) {
-    var sourcename = Sources[source].name;
+  for(sourcename in Sources) {
     plotrows += '<tr>';
     plotrows += ' <td>';
     if(sourcename == "temperature" || sourcename == "humidity" || sourcename == "light")
       plotrows += "<img src=\"/static/"+sourcename+"_icon.svg\"/ style=\"height:30px;\"\>";
     plotrows += ' <h4>' + sourcename+'</h4>';
-    plotrows += ' <div id="currval_'+sourcename+'"></div>';
     plotrows += ' </td>';
     plotrows += ' <td>';
-    plotrows += '  <div id="plot_'+sourcename+'" style="width:600px;height:150px;"></div>';
+    plotrows += '  <div id="plot_'+sourcename+'" style="width:500px;height:150px;"></div>';
     plotrows += ' </td>';
     plotrows += ' <td>';
-    plotrows += '  <div id="plot_'+sourcename+'_overview" style="width:200px;height:100px;"></div>';
+    plotrows += ' <p><div class="well" style="height:20px; width:30px; padding:50px; font-size:30px;" id="currval_'+sourcename+'"></div></p>';
+    plotrows += ' </td>';
+    plotrows += ' <td>';
+    plotrows += buildTimeSelector(sourcename);
     plotrows += ' </td>';
     plotrows += '</tr>';
   }
   plotrows += '</tables>';
   $("#plots").html(plotrows);
 
-  for(source in Sources) {
-    var sourcename = Sources[source].name;
-    var sourcedata = [];
-    var overview = $.plot($("#plot_"+sourcename+"_overview"), [
+  for(sourcename in Sources)
+    selectTime(null, sourcename);
+
+  updateCurrents();
+  setInterval("updateCurrents()", 1000);
+});
+
+function updateCurrents()
+{
+
+  $.getJSON($SCRIPT_ROOT + '/_getstatus', {"hwids":"{{hwid}}"}, function(result) {
+      var online = result.data["{{hwid}}"]['online'];
+      var stat = result.data["{{hwid}}"]['values'];
+
+      for(sourcename in stat)
       {
-        data: sourcedata,
-        lines: {show: true, fill: true},
-        shadowSize: 0,
-        selection: {mode:"x"}
-      }], {xaxis: {mode: "time"}});
-  }
+        var value = "-";
+        if(online) value = stat[sourcename]['avg'];
+        $("#currval_"+sourcename).html('<span >'+value+'</span>');
+      }
+    });
 }
 
-function updateData(_hwid, _sourcename, _start, _end, _resolution)
+
+function callUpdateGraph(hwid, sourcename, start, end, resolution)
+{
+     updateGraph({{hwid}}, sourcename, start, "N", resolution);
+}
+
+function selectTime(ctx, sourcename)
+{
+  var val = $('#timeselect_'+sourcename).val();
+
+  if(Sources[sourcename].updater != null)
+    clearInterval(Sources[sourcename].updater);
+
+  start = "";
+  resolution = "";
+  switch(val)
+  {
+    case "minute":
+      start = "-60";
+      resolution = "1";
+      break;
+    case "day":
+      start = "-86400";
+      resolution = "60";
+      break;
+    case "week":
+      start = "-604800";
+      resolution = "3600";
+      break;
+  }
+  updateGraph({{hwid}}, sourcename, start, "N", resolution);
+  Sources[sourcename].updater = setInterval("updateGraph('{{hwid}}', '"+sourcename+"', '"+start+"', 'N', '"+resolution+"')",
+      resolution*1000);
+
+}
+
+function buildTimeSelector(sourcename)
+{
+  var _ = '';
+  _+= '<select class="small" id="timeselect_'+sourcename+'" onchange="selectTime(this.id, \''+sourcename+'\')">';
+  _+= '<option value="minute">1 minute</option>';
+  _+= '<option value="day">1 day</option>';
+  _+= '<option value="week">1 week</option>';
+  _+= '</select>';
+
+  return _;
+}
+
+function updateGraph(_hwid, _sourcename, _start, _end, _resolution)
 {
   data = []
   $.getJSON($SCRIPT_ROOT + '/_getdata', 
@@ -72,25 +129,9 @@ function updateData(_hwid, _sourcename, _start, _end, _resolution)
           shadowSize: 0                         
         }], {xaxis: {mode: "time"}});
 
-        // Update the current value
-        var currval = "N/A";
-        if(datastream.length > 0) 
-          currval = datastream[datastream.length-1][1];
-        $("#currval_"+_sourcename).html(currval);
-      });
+     });
 }
 
-function updateSources() {
-  var requests = [];
-  for(var sidx=0; sidx<Sources.length; ++sidx)
-  {
-    var sourcename = Sources[sidx]["name"];
-
-    updateData("{{hwid}}", sourcename, -60, "N", 1);
-  }
-
-  setTimeout("updateSources()", 1000);
-}
 
 </script>
 
