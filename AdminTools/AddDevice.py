@@ -35,13 +35,13 @@ ret = rrdtool.create(
     'DS:humidity:GAUGE:60:U:U',
     'DS:light:GAUGE:60:U:U',
     'RRA:AVERAGE:0.5:1:60',      # AVG: 1-second resolution for a minute
-    'RRA:AVERAGE:0.5:60:1440',   # AVG: 1-minute resolution for a day
+    'RRA:AVERAGE:0.5:1800:48',   # AVG: 30-minute resolution for a day
     'RRA:AVERAGE:0.5:3600:168',  # AVG: 1-hour resolution for a week
     'RRA:MIN:0.5:1:60',          # MIN: 1-second resolution for a minute
-    'RRA:MIN:0.5:60:1440',       # MIN: 1-minute resolution for a day
+    'RRA:MIN:0.5:1800:48',       # MIN: 30-minute resolution for a day
     'RRA:MIN:0.5:3600:168',      # MIN: 1-hour resolution for a week
     'RRA:MAX:0.5:1:60',          # MAX: 1-second resolution for a minute
-    'RRA:MAX:0.5:60:1440',       # MAX: 1-minute resolution for a day
+    'RRA:MAX:0.5:1800:48',       # MAX: 30-minute resolution for a day
     'RRA:MAX:0.5:3600:168',      # MAX: 1-hour resolution for a week
     )
 

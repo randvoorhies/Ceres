@@ -81,17 +81,19 @@ function selectTime(ctx, sourcename)
       break;
     case "day":
       start = "-86400";
-      resolution = "60";
+      resolution = "1800";
       break;
     case "week":
       start = "-604800";
       resolution = "3600";
       break;
   }
-  updateGraph({{hwid}}, sourcename, start, "N", resolution);
-  Sources[sourcename].updater = setInterval("updateGraph('{{hwid}}', '"+sourcename+"', '"+start+"', 'N', '"+resolution+"')",
-      resolution*1000);
 
+  updateGraph({{hwid}}, sourcename, start, "N", resolution);
+
+  Sources[sourcename].updater = setInterval(
+      "updateGraph('{{hwid}}', '"+sourcename+"', '"+start+"', 'N', '"+resolution+"')",
+      resolution*1000);
 }
 
 function buildTimeSelector(sourcename)
@@ -120,6 +122,7 @@ function updateGraph(_hwid, _sourcename, _start, _end, _resolution)
       function(data) {
 
         var datastream = data.data;
+        Sources[_sourcename].data = datastream;
 
         // Update the plot
         $.plot($("#plot_"+_sourcename), [

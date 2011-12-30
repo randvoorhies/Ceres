@@ -63,6 +63,8 @@ def getdata():
 
   if end == 'N': end = str(now)
 
+  print 'GetData [' + source + '] [' + start + '] [' + end + '] [' + resolution + ']'
+
   now = utcnow()
   res = rrdtool.fetch(str(device['file']), 'AVERAGE',
       '--start='+str(start),
@@ -80,8 +82,9 @@ def getdata():
 
   for t,d in enumerate(data):
     timestamp = (timestamps[0] + t*timestamps[2]) * 1000
-    if d[nameidx] != None:
-      result.append([timestamp + timezoneoffset, d[nameidx]])
+    value = d[nameidx]
+    if value == None: value = 0
+    result.append([timestamp + timezoneoffset, value])
 
   return jsonify(data=result)
 
