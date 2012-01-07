@@ -7,7 +7,7 @@
   var Sources = 
   {
    {% for source in sources %}
-   {{source}} : { updater : null }, 
+   {{source}} : { updater : null, data : [], resolution : null }, 
    {% endfor %}
   };
     
@@ -58,41 +58,48 @@ function updateCurrents()
     });
 }
 
-
-function callUpdateGraph(hwid, sourcename, start, end, resolution)
+function getStartFromResolution(resolution)
 {
-     updateGraph({{hwid}}, sourcename, start, "N", resolution);
+  resolution = String(resolution);
+  switch(resolution)
+  {
+    case "1":    return -60;
+    case "1800": return -86400;
+    case "3600": return -604800;
+  }
 }
 
 function selectTime(ctx, sourcename)
 {
   var val = $('#timeselect_'+sourcename).val();
 
-  if(Sources[sourcename].updater != null)
-    clearInterval(Sources[sourcename].updater);
-
-  start = "";
-  resolution = "";
+  var start = "";
   switch(val)
   {
     case "minute":
-      start = "-60";
       resolution = "1";
       break;
     case "day":
-      start = "-86400";
       resolution = "1800";
       break;
     case "week":
-      start = "-604800";
       resolution = "3600";
       break;
+    default: return;
   }
+
+  start = String(getStartFromResolution(resolution));
+
+  Sources[sourcename].resolution = resolution;
+  Sources[sourcename].data = [];
+
+  if(Sources[sourcename].updater != null)
+    clearInterval(Sources[sourcename].updater);
 
   updateGraph({{hwid}}, sourcename, start, "N", resolution);
 
   Sources[sourcename].updater = setInterval(
-      "updateGraph('{{hwid}}', '"+sourcename+"', '"+start+"', 'N', '"+resolution+"')",
+      "maintainGraph('{{hwid}}', '"+sourcename+"', '"+resolution+"')",
       resolution*1000);
 }
 
@@ -110,7 +117,6 @@ function buildTimeSelector(sourcename)
 
 function updateGraph(_hwid, _sourcename, _start, _end, _resolution)
 {
-  data = []
   $.getJSON($SCRIPT_ROOT + '/_getdata', 
       {
         hwid       : _hwid,
@@ -133,6 +139,58 @@ function updateGraph(_hwid, _sourcename, _start, _end, _resolution)
         }], {xaxis: {mode: "time"}});
 
      });
+}
+
+function plotMaintenance(_data, _sourcename, _resolution)
+{ 
+  var datastream = _data.data;
+  var start = getStartFromResolution(_resolution);
+
+  Sources[_sourcename].data = Sources[_sourcename].data.concat(datastream);
+
+  var starttime = Sources[_sourcename].data[Sources[_sourcename].data.length-1][0] + start*1000;
+
+  while(Sources[_sourcename].data.length > 0 && Sources[_sourcename].data[0][0] < starttime)
+    Sources[_sourcename].data = Sources[_sourcename].data.slice(1);
+
+  // Update the plot
+  $.plot($("#plot_"+_sourcename), [
+  {
+    data: Sources[_sourcename].data,
+    lines: {show: true, fill: true},
+    shadowSize: 0                         
+  }], {xaxis: {mode: "time"}});
+}
+
+function maintainGraph(_hwid, _sourcename, _resolution)
+{
+  var start = getStartFromResolution(_resolution);
+
+  var lastupdate = null;
+
+  if(Sources[_sourcename].data.length == 0)
+    lastupdate = start;
+  else
+    for(var i=Sources[_sourcename].data.length-1; i>=0; i--)
+    {
+      if(Sources[_sourcename].data[i][1] != null)
+      {
+        lastupdate = Sources[_sourcename].data[i][0]/1000;
+        break;
+      }
+    }
+    if(lastupdate == null) lastupdate = start;
+
+  $.getJSON($SCRIPT_ROOT + '/_getdata', 
+      {
+        hwid       : _hwid,
+        source     : _sourcename,
+        start      : lastupdate,
+        end        : 'N',
+        resolution : _resolution
+      },
+      function(data) { plotMaintenance(data, _sourcename, _resolution) }
+      );
 }
 
 

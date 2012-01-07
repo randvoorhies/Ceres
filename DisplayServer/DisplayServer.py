@@ -58,12 +58,19 @@ def getdata():
   
   now = utcnow()
 
-  if start < 0: start = now + start
-  start = str(start)
+  if start < 0:
+    start = now + start
+  else:
+    start = start - timezoneoffset/1000
+  start = str(int(start))
 
-  if end == 'N': end = str(now)
+  if end == 'N':
+    end = now
+  else:
+    end = end - timezoneoffset/1000
+  end = str(int(end))
 
-  print 'GetData [' + source + '] [' + start + '] [' + end + '] [' + resolution + ']'
+  print "START [{0}] END[{1}]".format(start, end)
 
   now = utcnow()
   res = rrdtool.fetch(str(device['file']), 'AVERAGE',
@@ -82,11 +89,9 @@ def getdata():
 
   for t,d in enumerate(data):
     timestamp = (timestamps[0] + t*timestamps[2]) * 1000
-    value = d[nameidx]
-    if value == None: value = 0
-    result.append([timestamp + timezoneoffset, value])
+    result.append([timestamp + timezoneoffset, d[nameidx]])
 
-  return jsonify(data=result)
+  return jsonify(data=result, source=source, start=start, end=end, resolution=timestamps[2])
 
 ######################################################################
 # Get Status Responder
