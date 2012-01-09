@@ -34,6 +34,29 @@ def login_required(f):
 def utcnow():
   return int(calendar.timegm(time.gmtime()))
 
+
+def rrdtoolfetch(source, filename, RRA, start, end, resolution, timezoneoffset=0):
+  res = rrdtool.fetch(str(filename), RRA,
+      '--start='+str(start),
+      '--end='+str(end),
+      '--resolution='+str(resolution))
+
+  timestamps = res[0]
+  names      = res[1]
+  data       = res[2]
+
+  # Find the requested source name
+  nameidx = names.index(source);
+
+  result = []
+
+  for t,d in enumerate(data):
+    timestamp = (timestamps[0] + t*timestamps[2]) * 1000
+    result.append([timestamp + timezoneoffset, d[nameidx]])
+
+  return result
+
+
 ######################################################################
 # Get Data Responder 
 ######################################################################
@@ -70,28 +93,16 @@ def getdata():
     end = end - timezoneoffset/1000
   end = str(int(end))
 
-  print "START [{0}] END[{1}]".format(start, end)
+  avgresult = rrdtoolfetch(source, device['file'], 'AVERAGE', start, end, resolution, timezoneoffset)
+  minresult = []
+  maxresult = []
+  if resolution > 1:
+    minresult = rrdtoolfetch(source, device['file'], 'MIN', start, end, resolution, timezoneoffset)
+    maxresult = rrdtoolfetch(source, device['file'], 'MAX', start, end, resolution, timezoneoffset)
 
-  now = utcnow()
-  res = rrdtool.fetch(str(device['file']), 'AVERAGE',
-      '--start='+str(start),
-      '--end='+str(end),
-      '--resolution='+str(resolution))
-
-  timestamps = res[0]
-  names      = res[1]
-  data       = res[2]
-
-  # Find the requested source name
-  nameidx = names.index(source);
-
-  result = []
-
-  for t,d in enumerate(data):
-    timestamp = (timestamps[0] + t*timestamps[2]) * 1000
-    result.append([timestamp + timezoneoffset, d[nameidx]])
-
-  return jsonify(data=result, source=source, start=start, end=end, resolution=timestamps[2])
+  return jsonify(data={'avg' : avgresult,
+                       'min' : minresult,
+                       'max' : maxresult} )
 
 ######################################################################
 # Get Status Responder

@@ -1,13 +1,12 @@
 {% extends "layout.html" %}
 {% block body %}
 <script type=text/javascript src="{{ url_for('static', filename='jquery.flot.js') }}"></script>
-<script type=text/javascript src="{{ url_for('static', filename='jquery.flot.selection.js') }}"></script>
 <script type=text/javascript>
 
   var Sources = 
   {
    {% for source in sources %}
-   {{source}} : { updater : null, data : [], resolution : null }, 
+   {{source}} : { updater : null, avg : [], min : [], max : [], resolution : null }, 
    {% endfor %}
   };
     
@@ -53,7 +52,7 @@ function updateCurrents()
       {
         var value = "-";
         if(online) value = stat[sourcename]['avg'];
-        $("#currval_"+sourcename).html('<span >'+value+'</span>');
+        $("#currval_"+sourcename).html('<center>'+value+'</center>');
       }
     });
 }
@@ -67,6 +66,7 @@ function getStartFromResolution(resolution)
     case "1800": return -86400;
     case "3600": return -604800;
   }
+  return null;
 }
 
 function selectTime(ctx, sourcename)
@@ -91,12 +91,14 @@ function selectTime(ctx, sourcename)
   start = String(getStartFromResolution(resolution));
 
   Sources[sourcename].resolution = resolution;
-  Sources[sourcename].data = [];
+  Sources[sourcename].avg = [];
+  Sources[sourcename].min = [];
+  Sources[sourcename].max = [];
 
   if(Sources[sourcename].updater != null)
     clearInterval(Sources[sourcename].updater);
 
-  updateGraph({{hwid}}, sourcename, start, "N", resolution);
+  getWholeGraph({{hwid}}, sourcename, start, "N", resolution);
 
   Sources[sourcename].updater = setInterval(
       "maintainGraph('{{hwid}}', '"+sourcename+"', '"+resolution+"')",
@@ -115,7 +117,42 @@ function buildTimeSelector(sourcename)
   return _;
 }
 
-function updateGraph(_hwid, _sourcename, _start, _end, _resolution)
+function plotGraph(_sourcename)
+{
+  if(String(Sources[_sourcename].resolution) == "1")
+  {
+    $.plot($("#plot_"+_sourcename), [
+    {
+      data: Sources[_sourcename].avg,
+      lines: {show: true, fill: true},
+      shadowSize: 0                         
+    }], {xaxis: {mode: "time"}});
+  }
+  else
+  {
+
+  //var dataset = [
+  //     { data: Sources[_sourcename].min, id: "foo" } ,         // use default bottom
+  //     { data: Sources[_sourcename].max, fillBetween: "foo" }, // use first dataset as bottom
+  //     ];
+  //$.plot($("#plot_"+_sourcename), dataset, { line: { show: true, fill: true }});
+
+    var minmaxdata = [];
+    for(var i=0; i<Sources[_sourcename].min.length; i++)
+    {
+      minmaxdata.push([Sources[_sourcename].min[i][0], Sources[_sourcename].min[i][1], Sources[_sourcename].max[i][1]]); 
+    }
+
+    var dataset = [
+    { data : minmaxdata, lines : { fill: true, lineWidth: 0} },
+    { data : Sources[_sourcename].avg }
+      ];
+      $.plot($("#plot_"+_sourcename), dataset, 
+          { xaxis : { mode : "time" } } );
+  }
+}
+
+function getWholeGraph(_hwid, _sourcename, _start, _end, _resolution)
 {
   $.getJSON($SCRIPT_ROOT + '/_getdata', 
       {
@@ -127,39 +164,36 @@ function updateGraph(_hwid, _sourcename, _start, _end, _resolution)
       },
       function(data) {
 
-        var datastream = data.data;
-        Sources[_sourcename].data = datastream;
+        Sources[_sourcename].avg = data.data['avg'];
+        Sources[_sourcename].min = data.data['min'];
+        Sources[_sourcename].max = data.data['max'];
 
-        // Update the plot
-        $.plot($("#plot_"+_sourcename), [
-        {
-          data: datastream,
-          lines: {show: true, fill: true},
-          shadowSize: 0                         
-        }], {xaxis: {mode: "time"}});
-
+        plotGraph(_sourcename);
      });
 }
 
 function plotMaintenance(_data, _sourcename, _resolution)
 { 
-  var datastream = _data.data;
+  var avgdata = _data.data['avg'];
   var start = getStartFromResolution(_resolution);
+  var starttime = Sources[_sourcename].avg[Sources[_sourcename].avg.length-1][0] + start*1000;
 
-  Sources[_sourcename].data = Sources[_sourcename].data.concat(datastream);
+  Sources[_sourcename].avg = Sources[_sourcename].avg.concat(avgdata);
+  while(Sources[_sourcename].avg.length > 0 && Sources[_sourcename].avg[0][0] < starttime)
+    Sources[_sourcename].avg = Sources[_sourcename].avg.slice(1);
 
-  var starttime = Sources[_sourcename].data[Sources[_sourcename].data.length-1][0] + start*1000;
-
-  while(Sources[_sourcename].data.length > 0 && Sources[_sourcename].data[0][0] < starttime)
-    Sources[_sourcename].data = Sources[_sourcename].data.slice(1);
-
-  // Update the plot
-  $.plot($("#plot_"+_sourcename), [
+  if(_resolution > 1)
   {
-    data: Sources[_sourcename].data,
-    lines: {show: true, fill: true},
-    shadowSize: 0                         
-  }], {xaxis: {mode: "time"}});
+    Sources[_sourcename].min = Sources[_sourcename].min.concat(mindata);
+    while(Sources[_sourcename].min.length > 0 && Sources[_sourcename].min[0][0] < starttime)
+      Sources[_sourcename].min = Sources[_sourcename].min.slice(1);
+
+    Sources[_sourcename].max = Sources[_sourcename].max.concat(maxdata);
+    while(Sources[_sourcename].max.length > 0 && Sources[_sourcename].max[0][0] < starttime)
+      Sources[_sourcename].max = Sources[_sourcename].max.slice(1);
+  }
+
+  plotGraph(_sourcename);
 }
 
 function maintainGraph(_hwid, _sourcename, _resolution)
@@ -168,14 +202,14 @@ function maintainGraph(_hwid, _sourcename, _resolution)
 
   var lastupdate = null;
 
-  if(Sources[_sourcename].data.length == 0)
+  if(Sources[_sourcename].avg.length == 0)
     lastupdate = start;
   else
-    for(var i=Sources[_sourcename].data.length-1; i>=0; i--)
+    for(var i=Sources[_sourcename].avg.length-1; i>=0; i--)
     {
-      if(Sources[_sourcename].data[i][1] != null)
+      if(Sources[_sourcename].avg[i][1] != null)
       {
-        lastupdate = Sources[_sourcename].data[i][0]/1000;
+        lastupdate = Sources[_sourcename].avg[i][0]/1000;
         break;
       }
     }
