@@ -170,7 +170,7 @@ def getstatus():
 
         statii[hwid]['values'][sensorname] = {
             'min' : str(avgmin)[0:4],
-            'avg' : avgvals[2][0][idx],
+            'avg' : str(avgvals[2][0][idx])[0:4],
             'max' : str(avgmax)[0:4]}
 
     else:
