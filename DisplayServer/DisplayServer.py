@@ -9,9 +9,16 @@ import bcrypt
 import re
 import rrdtool
 import operator
+import logging.handlers
 
 app = Flask(__name__)
 app.secret_key = '\xba\xd0\x15\xaeH\xb6\x81M6\x15tb\xf1p4z_\x80\xd8\xf2\xf9\x05\xd1\x03'
+
+loghandler = logging.handlers.RotatingFileHandler('/var/log/ceres/display.log', 'a', 524288, 10)
+loghandler.setLevel(logging.INFO)
+app.logger.addHandler(loghandler)
+
+
 try:
   dbconnection = pymongo.Connection()
 except pymongo.errors.AutoReconnect:
