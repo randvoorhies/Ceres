@@ -169,9 +169,9 @@ def getstatus():
           avgmax /= float(n)
 
         statii[hwid]['values'][sensorname] = {
-            'min' : str(avgmin)[0:4],
-            'avg' : str(avgvals[2][0][idx])[0:4],
-            'max' : str(avgmax)[0:4]}
+            'min' : str(avgmin)[0:5],
+            'avg' : str(avgvals[2][0][idx])[0:5],
+            'max' : str(avgmax)[0:5]}
 
     else:
       statii[hwid]['msg'] = "No report recieved for {0} seconds".format(now-timestamp)

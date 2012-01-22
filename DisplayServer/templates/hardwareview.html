@@ -1,6 +1,7 @@
 {% extends "layout.html" %}
 {% block body %}
 <script type=text/javascript src="{{ url_for('static', filename='jquery.flot.js') }}"></script>
+<script type=text/javascript src="{{ url_for('static', filename='jquery.flot.selection.js') }}"></script>
 <script type=text/javascript>
 
   var Sources = 
@@ -20,11 +21,20 @@ $(document).ready(function(){
       plotrows += "<img src=\"/static/"+sourcename+"_icon.svg\"/ style=\"height:30px;\"\>";
     plotrows += ' <h4>' + sourcename+'</h4>';
     plotrows += ' </td>';
-    plotrows += ' <td>';
-    plotrows += '  <div id="plot_'+sourcename+'" style="width:500px;height:150px;"></div>';
+    plotrows += ' <td style="width:0px; padding-right:0px; padding-left:0px;">';
+    plotrows += '  <div id="plot_'+sourcename+'" style="width:500px;height:150px; padding:10px;"></div>';
+    plotrows += ' </td>';
+    plotrows += ' <td style="padding-left:0px;">';
+    plotrows += '   <p><button class="btn" style="width:20px;">+</button></p>';
+    plotrows += '   <p><button class="btn" style="width:20px;">-</button></p>';
     plotrows += ' </td>';
     plotrows += ' <td>';
-    plotrows += ' <p><div class="well" style="height:20px; width:30px; padding:50px; font-size:30px;" id="currval_'+sourcename+'"></div></p>';
+    plotrows += ' <div class="label" id="currval_'+sourcename+'"' + 
+                '   style="font-size:30px; text-align:center; width:100px; height:100px; margin-top: 15px;line-height:100px;"' +
+                '   ></div>';
+    plotrows += ' </div>';
+
+
     plotrows += ' </td>';
     plotrows += ' <td>';
     plotrows += buildTimeSelector(sourcename);
@@ -52,7 +62,7 @@ function updateCurrents()
       {
         var value = "-";
         if(online) value = stat[sourcename]['avg'];
-        $("#currval_"+sourcename).html('<center>'+value+'</center>');
+        $("#currval_"+sourcename).html(value);
       }
     });
 }
@@ -131,12 +141,6 @@ function plotGraph(_sourcename)
   else
   {
 
-  //var dataset = [
-  //     { data: Sources[_sourcename].min, id: "foo" } ,         // use default bottom
-  //     { data: Sources[_sourcename].max, fillBetween: "foo" }, // use first dataset as bottom
-  //     ];
-  //$.plot($("#plot_"+_sourcename), dataset, { line: { show: true, fill: true }});
-
     var minmaxdata = [];
     for(var i=0; i<Sources[_sourcename].min.length; i++)
     {
@@ -145,10 +149,24 @@ function plotGraph(_sourcename)
 
     var dataset = [
     { data : minmaxdata, lines : { fill: true, lineWidth: 0} },
-    { data : Sources[_sourcename].avg }
-      ];
-      $.plot($("#plot_"+_sourcename), dataset, 
-          { xaxis : { mode : "time" } } );
+    { data : Sources[_sourcename].avg } ];
+
+    var options = { 
+          xaxis : { mode : "time" },
+          selection : { mode : "x" }
+        };
+
+    var placeholder = $("#plot_"+_sourcename);
+
+    placeholder.bind("plotselected", function (event, ranges) {
+        plot = $.plot(placeholder, dataset,
+          $.extend(true, {}, options,
+            { xaxis: { min: ranges.xaxis.from, max: ranges.xaxis.to }
+          }));
+        });
+
+    $.plot($("#plot_"+_sourcename), dataset, options);
+
   }
 }
 
